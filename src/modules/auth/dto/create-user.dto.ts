@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, MinLength } from 'class-validator';
+import { IsNotEmpty, IsOptional, MinLength } from 'class-validator';
 
 export class CreateUserDto {
   @IsNotEmpty()
@@ -28,4 +28,10 @@ export class CreateUserDto {
     example: 'user',
   })
   type?: string;
+
+  // avatar will be set in controller after file upload
+  @IsOptional()
+  @ApiProperty()
+  avatar?: string;
+  example: 'uploads/avatar12345.png';
 }

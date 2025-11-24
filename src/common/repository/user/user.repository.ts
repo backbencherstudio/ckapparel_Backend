@@ -198,6 +198,7 @@ export class UserRepository {
     phone_number,
     role_id = null,
     type = 'user',
+    avatar,
   }: {
     name?: string;
     first_name?: string;
@@ -207,6 +208,7 @@ export class UserRepository {
     phone_number?: string;
     role_id?: string;
     type?: string;
+    avatar?: string;
   }) {
     try {
       const data = {};
@@ -251,6 +253,10 @@ export class UserRepository {
         // if (type == Role.VENDOR) {
         //   data['approved_at'] = DateHelper.now();
         // }
+      }
+
+      if (avatar) {
+        data['avatar'] = avatar;
       }
 
       const user = await prisma.user.create({

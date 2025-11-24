@@ -9,13 +9,17 @@ import {
   Req,
   Res,
   UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { memoryStorage } from 'multer';
-import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  FileFieldsInterceptor,
+  FileInterceptor,
+} from '@nestjs/platform-express';
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -53,7 +57,16 @@ export class AuthController {
 
   @ApiOperation({ summary: 'Register a user' })
   @Post('register')
-  async create(@Body() data: CreateUserDto, @Req() req: Request) {
+  @UseInterceptors(
+    FileInterceptor('avatar', {
+      storage: memoryStorage(),
+    }),
+  )
+  async create(
+    @Body() data: CreateUserDto,
+
+    @UploadedFile() avatar?: Express.Multer.File,
+  ) {
     try {
       const name = data.name;
       const first_name = data.first_name;
@@ -61,6 +74,9 @@ export class AuthController {
       const email = data.email;
       const password = data.password;
       const type = data.type;
+      const avatarFile = avatar;
+
+      console.log('hello', avatarFile);
 
       if (!name) {
         throw new HttpException('Name not provided', HttpStatus.UNAUTHORIZED);
@@ -94,6 +110,7 @@ export class AuthController {
         email: email,
         password: password,
         type: type,
+        avatar: avatarFile,
       });
 
       return response;
@@ -178,7 +195,6 @@ export class AuthController {
     }
   }
 
-  
   // google login
   @ApiOperation({ summary: 'Google login' })
   @Get('google')
@@ -229,39 +245,27 @@ export class AuthController {
     });
   }
 
-
   // update user
   @ApiOperation({ summary: 'Update user' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Patch('update')
   @UseInterceptors(
-    FileInterceptor('image', {
-      // storage: diskStorage({
-      //   destination:
-      //     appConfig().storageUrl.rootUrl + appConfig().storageUrl.avatar,
-      //   filename: (req, file, cb) => {
-      //     const randomName = Array(32)
-      //       .fill(null)
-      //       .map(() => Math.round(Math.random() * 16).toString(16))
-      //       .join('');
-      //     return cb(null, `${randomName}${file.originalname}`);
-      //   },
-      // }),
+    FileInterceptor('avatar', {
       storage: memoryStorage(),
     }),
   )
   async updateUser(
     @Req() req: Request,
     @Body() data: UpdateUserDto,
-    @UploadedFile() image: Express.Multer.File,
+    @UploadedFile() avatar: Express.Multer.File,
   ) {
     try {
       const user_id = req.user.userId;
-      const response = await this.authService.updateUser(user_id, data, image);
+      const response = await this.authService.updateUser(user_id, data, avatar);
       console.log('user_id', user_id);
       console.log('data', data);
-      console.log('image', image);
+      console.log('avatar', avatar);
       console.log('response', response);
       return response;
     } catch (error) {

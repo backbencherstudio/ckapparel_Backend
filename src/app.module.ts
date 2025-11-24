@@ -47,6 +47,7 @@ import { PaymentModule } from './modules/payment/payment.module';
         port: +appConfig().redis.port,
       },
     }),
+    
     // disabling throttling for dev
     // ThrottlerModule.forRoot([
     //   {

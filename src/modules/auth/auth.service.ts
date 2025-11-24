@@ -11,10 +11,11 @@ import { UserRepository } from '../../common/repository/user/user.repository';
 import { MailService } from '../../mail/mail.service';
 import { UcodeRepository } from '../../common/repository/ucode/ucode.repository';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { SazedStorage } from '../../common/lib/disk/SazedStorage';
+import { SazedStorage } from '../../common/lib/Disk/SazedStorage';
 import { DateHelper } from '../../common/helper/date.helper';
 import { StripePayment } from '../../common/lib/Payment/stripe/StripePayment';
 import { StringHelper } from '../../common/helper/string.helper';
+import { CreateUserDto } from './dto/create-user.dto';
 
 @Injectable()
 export class AuthService {
@@ -24,6 +25,149 @@ export class AuthService {
     private mailService: MailService,
     @InjectRedis() private readonly redis: Redis,
   ) {}
+
+  async register({
+    name,
+    first_name,
+    last_name,
+    email,
+    password,
+    type,
+    avatar,
+  }: {
+    name: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    password: string;
+    type?: string;
+    avatar?: Express.Multer.File;
+  }) {
+    try {
+      // Check if email already exist
+      const userEmailExist = await UserRepository.exist({
+        field: 'email',
+        value: String(email),
+      });
+
+      if (userEmailExist) {
+        return {
+          statusCode: 401,
+          message: 'Email already exist',
+        };
+      }
+
+      let mediaUrl: string | undefined = undefined;
+
+      if (avatar?.buffer) {
+        try {
+          const fileName = `${StringHelper.randomString()}${avatar.originalname}`;
+          await SazedStorage.put(
+            appConfig().storageUrl.avatar + '/' + fileName,
+            avatar.buffer,
+          );
+          console.log('fileName: ', fileName);
+
+          // set avatar url
+          mediaUrl = SazedStorage.url(
+            appConfig().storageUrl.avatar + '/' + fileName,
+          );
+        } catch (error) {
+          console.error('Failed to upload avatar:', error);
+          throw new Error(`Failed to upload avatar: ${error.message}`);
+        }
+      }
+
+      const user = await UserRepository.createUser({
+        name: name,
+        first_name: first_name,
+        last_name: last_name,
+        email: email,
+        password: password,
+        type: type,
+        avatar: mediaUrl,
+      });
+
+      if (user == null && user.success == false) {
+        return {
+          success: false,
+          message: 'Failed to create account',
+        };
+      }
+
+      // create stripe customer account
+      const stripeCustomer = await StripePayment.createCustomer({
+        user_id: user.data.id,
+        email: email,
+        name: name,
+      });
+
+      if (stripeCustomer) {
+        await this.prisma.user.update({
+          where: {
+            id: user.data.id,
+          },
+          data: {
+            billing_id: stripeCustomer.id,
+          },
+        });
+      }
+
+      // ----------------------------------------------------
+      // // create otp code
+      // const token = await UcodeRepository.createToken({
+      //   userId: user.data.id,
+      //   isOtp: true,
+      // });
+
+      // // send otp code to email
+      // await this.mailService.sendOtpCodeToEmail({
+      //   email: email,
+      //   name: name,
+      //   otp: token,
+      // });
+
+      // return {
+      //   success: true,
+      //   message: 'We have sent an OTP code to your email',
+      // };
+
+      // ----------------------------------------------------
+
+      // // Generate verification token
+      // const token = await UcodeRepository.createVerificationToken({
+      //   userId: user.data.id,
+      //   email: email,
+      // });
+
+      // // Send verification email with token
+      // await this.mailService.sendVerificationLink({
+      //   email,
+      //   name: email,
+      //   token: token.token,
+      //   type: type,
+      // });
+
+      return {
+        success: true,
+        message: 'Account created successfully',
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+      };
+    }
+  }
+
+  //   {
+  //   "name": "Sazedul Islam",
+  //   "first_name": "Sazedul",
+  //   "last_name": "Islam",
+  //   "email": "sazedulislam9126@gmail.com",
+  //   "password": "123456789",
+  //   "type": "user"
+  // }
 
   async me(userId: string) {
     try {
@@ -52,12 +196,6 @@ export class AuthService {
         };
       }
 
-      if (user.avatar) {
-        user['avatar_url'] = SazedStorage.url(
-          appConfig().storageUrl.avatar + user.avatar,
-        );
-      }
-
       if (user) {
         return {
           success: true,
@@ -80,7 +218,7 @@ export class AuthService {
   async updateUser(
     userId: string,
     updateUserDto: UpdateUserDto,
-    image?: Express.Multer.File,
+    avatar?: Express.Multer.File,
   ) {
     try {
       const data: any = {};
@@ -120,28 +258,50 @@ export class AuthService {
       if (updateUserDto.date_of_birth) {
         data.date_of_birth = DateHelper.format(updateUserDto.date_of_birth);
       }
-      if (image) {
-        // delete old image from storage
-        const oldImage = await this.prisma.user.findFirst({
-          where: { id: userId },
-          select: { avatar: true },
-        });
-        if (oldImage.avatar) {
-          await SazedStorage.delete(
-            appConfig().storageUrl.avatar + oldImage.avatar,
-          );
+
+      let mediaUrl: string | undefined;
+
+      if (avatar?.buffer) {
+        try {
+          // 1. Upload new avatar
+          const fileName = `${StringHelper.randomString()}-${avatar.originalname}`;
+          const key = `${appConfig().storageUrl.avatar}/${fileName}`;
+
+          await SazedStorage.put(key, avatar.buffer);
+          mediaUrl = SazedStorage.url(key);
+
+          // 2. Get old avatar (if any)
+          const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { avatar: true },
+          });
+
+          // 3. Delete old avatar if exists and is not empty
+          if (user?.avatar) {
+            try {
+              // If avatar stored is a full URL -> extract its path
+              const url = new URL(user.avatar);
+              const oldKey = url.pathname.replace(/^\/+/, ''); // remove leading slash
+
+              await SazedStorage.delete(oldKey);
+            } catch {
+              // If it wasn't a URL, assume it is the actual storage key
+              await SazedStorage.delete(user.avatar);
+            }
+          }
+
+          // 4. Update user's avatar
+          data.avatar = mediaUrl;
+        } catch (err: any) {
+          console.warn('Avatar upload failed:', err.message || err);
         }
-
-        // upload file
-        const fileName = `${StringHelper.randomString()}${image.originalname}`;
-        await SazedStorage.put(
-          appConfig().storageUrl.avatar + fileName,
-          image.buffer,
-        );
-
-        data.avatar = fileName;
       }
+
       const user = await UserRepository.getUserDetails(userId);
+      if (!user) {
+        return { success: false, message: 'User not found' };
+      }
+
       if (user) {
         await this.prisma.user.update({
           where: { id: userId },
@@ -257,8 +417,7 @@ export class AuthService {
     }
   }
 
-
-    // google log in using passport.js
+  // google log in using passport.js
   async googleLogin({ email, userId }: { email: string; userId: string }) {
     try {
       const payload = { email: email, sub: userId };
@@ -373,8 +532,6 @@ export class AuthService {
     }
   }
 
-
-
   async refreshToken(user_id: string, refreshToken: string) {
     try {
       const storedToken = await this.redis.get(`refresh_token:${user_id}`);
@@ -434,116 +591,6 @@ export class AuthService {
       return {
         success: true,
         message: 'Refresh token revoked successfully',
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-      };
-    }
-  }
-
-  async register({
-    name,
-    first_name,
-    last_name,
-    email,
-    password,
-    type,
-  }: {
-    name: string;
-    first_name: string;
-    last_name: string;
-    email: string;
-    password: string;
-    type?: string;
-  }) {
-    try {
-      // Check if email already exist
-      const userEmailExist = await UserRepository.exist({
-        field: 'email',
-        value: String(email),
-      });
-
-      if (userEmailExist) {
-        return {
-          statusCode: 401,
-          message: 'Email already exist',
-        };
-      }
-
-      const user = await UserRepository.createUser({
-        name: name,
-        first_name: first_name,
-        last_name: last_name,
-        email: email,
-        password: password,
-        type: type,
-      });
-
-      if (user == null && user.success == false) {
-        return {
-          success: false,
-          message: 'Failed to create account',
-        };
-      }
-
-      // create stripe customer account
-      const stripeCustomer = await StripePayment.createCustomer({
-        user_id: user.data.id,
-        email: email,
-        name: name,
-      });
-
-      if (stripeCustomer) {
-        await this.prisma.user.update({
-          where: {
-            id: user.data.id,
-          },
-          data: {
-            billing_id: stripeCustomer.id,
-          },
-        });
-      }
-
-      // ----------------------------------------------------
-      // // create otp code
-      // const token = await UcodeRepository.createToken({
-      //   userId: user.data.id,
-      //   isOtp: true,
-      // });
-
-      // // send otp code to email
-      // await this.mailService.sendOtpCodeToEmail({
-      //   email: email,
-      //   name: name,
-      //   otp: token,
-      // });
-
-      // return {
-      //   success: true,
-      //   message: 'We have sent an OTP code to your email',
-      // };
-
-      // ----------------------------------------------------
-
-      // Generate verification token
-      const token = await UcodeRepository.createVerificationToken({
-        userId: user.data.id,
-        email: email,
-      });
-
-      // Send verification email with token
-      await this.mailService.sendVerificationLink({
-        email,
-        name: email,
-        token: token.token,
-        type: type,
-      });
-
-      return {
-        success: true,
-        message: 'We have sent a verification link to your email',
       };
     } catch (error) {
       return {

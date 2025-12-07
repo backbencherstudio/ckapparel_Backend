@@ -41,9 +41,9 @@ model User {
   approved_at  DateTime?
   availability String?
 
-  google_id  String? @unique
+  google_id   String? @unique
   facebook_id String? @unique
-  apple_id   String? @unique
+  apple_id    String? @unique
 
   email      String? @unique
   username   String? @unique
@@ -86,6 +86,9 @@ model User {
   roles                Role[]
   role_users           RoleUser[]
   payment_transactions PaymentTransaction[]
+  paymentMethods       PaymentMethod[]
+  subscription         Subscription?        @relation(fields: [subscriptionId], references: [id])
+  subscriptionId       String?
 
   @@map("users")
 }
@@ -252,6 +255,94 @@ model PaymentTransaction {
   paid_currency    String?
 
   @@map("payment_transactions")
+}
+
+enum Interval {
+  MONTH
+  YEAR
+}
+
+model SubsPlan {
+  id                String  @id @default(cuid())
+  name              String
+  slug              String  @unique // free, premium_monthly, premium_yearly
+  description       String?
+  price_description String?
+
+  // Billing details
+  isFree        Boolean   @default(false)
+  price         Int?
+  currency      String?
+  interval      Interval?
+  intervalCount Int?
+
+  // Stripe
+  stripeProductId String?
+  stripePriceId   String?
+
+  // Trial (for free plan)
+  trialDays Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subscriptions Subscription[]
+}
+
+model PaymentMethod {
+  id         String    @id @default(cuid())
+  created_at DateTime  @default(now())
+  updated_at DateTime  @default(now())
+  deleted_at DateTime?
+
+  status            Int?    @default(1) @db.SmallInt
+  type              String?
+  brand             String?
+  last4             String?
+  exp_month         Int?
+  exp_year          Int?
+  cardholder_name   String?
+  payment_method_id String
+
+  sort_order Int? @default(0)
+
+  user_id String
+  user    User?  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("payment_methods")
+}
+
+model Subscription {
+  id     String @id @default(cuid())
+  userId String
+
+  planId String
+  plan   SubsPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  // Required for tracking
+  startDate   DateTime  @default(now())
+  endDate     DateTime?
+  trialEndsAt DateTime?
+  status      String?
+
+  // Stripe subscription
+  stripeSubId String?
+
+  // Auto-renew
+  isActive          Boolean @default(true)
+  cancelAtPeriodEnd Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  users     User[]
+
+  @@map("subscriptions")
+}
+
+enum SubscriptionPlan {
+  FREE
+  PREMIUM_MONTHLY
+  PREMIUM_YEARLY
 }
 
 // ---------Start Chat schema---------

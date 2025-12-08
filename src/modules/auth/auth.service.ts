@@ -61,16 +61,21 @@ export class AuthService {
 
       if (avatar?.buffer) {
         try {
-          const fileName = `${StringHelper.randomString()}${avatar.originalname}`;
+          const safeName = avatar.originalname
+            .toLowerCase()
+            .replace(/[^a-z0-9.\s-_]/g, '') // keep only valid chars
+            .replace(/\s+/g, '-') // spaces → -
+            .replace(/-+/g, '-'); // remove double dashes
+
+          const fileName = `${StringHelper.randomString()}-${safeName}`;
+
           await SazedStorage.put(
-            appConfig().storageUrl.avatar + '/' + fileName,
+            `${appConfig().storageUrl.avatar}/${fileName}`,
             avatar.buffer,
           );
-          console.log('fileName: ', fileName);
 
-          // set avatar url
           mediaUrl = SazedStorage.url(
-            appConfig().storageUrl.avatar + '/' + fileName,
+            encodeURI(`${appConfig().storageUrl.avatar}/${fileName}`),
           );
         } catch (error) {
           console.error('Failed to upload avatar:', error);
@@ -264,11 +269,17 @@ export class AuthService {
       if (avatar?.buffer) {
         try {
           // 1. Upload new avatar
-          const fileName = `${StringHelper.randomString()}-${avatar.originalname}`;
+          const safeName = avatar.originalname
+            .toLowerCase()
+            .replace(/[^a-z0-9.\s-_]/g, '') // keep only valid chars
+            .replace(/\s+/g, '-') // spaces → -
+            .replace(/-+/g, '-'); // remove double dashes
+
+          const fileName = `${StringHelper.randomString()}-${safeName}`;
           const key = `${appConfig().storageUrl.avatar}/${fileName}`;
 
           await SazedStorage.put(key, avatar.buffer);
-          mediaUrl = SazedStorage.url(key);
+          mediaUrl = SazedStorage.url(encodeURI(key));
 
           // 2. Get old avatar (if any)
           const user = await this.prisma.user.findUnique({

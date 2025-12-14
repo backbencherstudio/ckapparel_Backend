@@ -85,10 +85,12 @@ model User {
   ucodes               Ucode[]
   roles                Role[]
   role_users           RoleUser[]
+
   payment_transactions PaymentTransaction[]
   paymentMethods       PaymentMethod[]
-  subscription         Subscription?        @relation(fields: [subscriptionId], references: [id])
-  subscriptionId       String?
+
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  subscriptionId String?
 
   @@map("users")
 }
@@ -282,6 +284,7 @@ model SubsPlan {
 
   // Trial (for free plan)
   trialDays Int?
+  type      SubscriptionPlan @default(FREE)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -320,10 +323,14 @@ model Subscription {
   plan   SubsPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
 
   // Required for tracking
-  startDate   DateTime  @default(now())
-  endDate     DateTime?
-  trialEndsAt DateTime?
-  status      String?
+  startDate     DateTime  @default(now())
+  endDate       DateTime?
+  trialEndsAt   DateTime?
+  status        String?
+  remainingDays Int?
+
+  // Plan type
+  type String
 
   // Stripe subscription
   stripeSubId String?
@@ -331,6 +338,7 @@ model Subscription {
   // Auto-renew
   isActive          Boolean @default(true)
   cancelAtPeriodEnd Boolean @default(false)
+  isTrial           Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -341,8 +349,9 @@ model Subscription {
 
 enum SubscriptionPlan {
   FREE
-  PREMIUM_MONTHLY
-  PREMIUM_YEARLY
+  TRIALING
+  BASIC
+  PREMIUM
 }
 
 // ---------Start Chat schema---------

@@ -1,5 +1,5 @@
 // external imports
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRedis } from '@nestjs-modules/ioredis';
 import Redis from 'ioredis';
@@ -51,10 +51,8 @@ export class AuthService {
       });
 
       if (userEmailExist) {
-        return {
-          statusCode: 401,
-          message: 'Email already exist',
-        };
+        // Throwing HttpException allows you to set a specific status code (e.g., 409 Conflict)
+        throw new HttpException('Email already exists', HttpStatus.CONFLICT);
       }
 
       let mediaUrl: string | undefined = undefined;

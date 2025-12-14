@@ -1,4 +1,10 @@
 -- CreateEnum
+CREATE TYPE "Interval" AS ENUM ('MONTH', 'YEAR');
+
+-- CreateEnum
+CREATE TYPE "SubscriptionPlan" AS ENUM ('FREE', 'TRIALING', 'BASIC', 'PREMIUM');
+
+-- CreateEnum
 CREATE TYPE "MessageStatus" AS ENUM ('PENDING', 'SENT', 'DELIVERED', 'READ');
 
 -- CreateTable
@@ -30,6 +36,9 @@ CREATE TABLE "users" (
     "status" SMALLINT DEFAULT 1,
     "approved_at" TIMESTAMP(3),
     "availability" TEXT,
+    "google_id" TEXT,
+    "facebook_id" TEXT,
+    "apple_id" TEXT,
     "email" TEXT,
     "username" TEXT,
     "name" VARCHAR(255),
@@ -51,6 +60,7 @@ CREATE TABLE "users" (
     "email_verified_at" TIMESTAMP(3),
     "is_two_factor_enabled" INTEGER DEFAULT 0,
     "two_factor_secret" TEXT,
+    "subscriptionId" TEXT,
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
@@ -182,6 +192,68 @@ CREATE TABLE "payment_transactions" (
     "paid_currency" TEXT,
 
     CONSTRAINT "payment_transactions_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "SubsPlan" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
+    "description" TEXT,
+    "price_description" TEXT,
+    "isFree" BOOLEAN NOT NULL DEFAULT false,
+    "price" DECIMAL(65,30),
+    "currency" TEXT,
+    "interval" "Interval",
+    "intervalCount" INTEGER,
+    "stripeProductId" TEXT,
+    "stripePriceId" TEXT,
+    "trialDays" INTEGER,
+    "type" "SubscriptionPlan" NOT NULL DEFAULT 'FREE',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "SubsPlan_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "payment_methods" (
+    "id" TEXT NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "deleted_at" TIMESTAMP(3),
+    "status" SMALLINT DEFAULT 1,
+    "type" TEXT,
+    "brand" TEXT,
+    "last4" TEXT,
+    "exp_month" INTEGER,
+    "exp_year" INTEGER,
+    "cardholder_name" TEXT,
+    "payment_method_id" TEXT NOT NULL,
+    "sort_order" INTEGER DEFAULT 0,
+    "user_id" TEXT NOT NULL,
+
+    CONSTRAINT "payment_methods_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "subscriptions" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "planId" TEXT NOT NULL,
+    "startDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "endDate" TIMESTAMP(3),
+    "trialEndsAt" TIMESTAMP(3),
+    "status" TEXT,
+    "remainingDays" INTEGER,
+    "type" "SubscriptionPlan" NOT NULL DEFAULT 'FREE',
+    "stripeSubId" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "cancelAtPeriodEnd" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "subscriptions_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -329,6 +401,15 @@ CREATE TABLE "_PermissionToRole" (
 CREATE UNIQUE INDEX "accounts_provider_provider_account_id_key" ON "accounts"("provider", "provider_account_id");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "users_google_id_key" ON "users"("google_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "users_facebook_id_key" ON "users"("facebook_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "users_apple_id_key" ON "users"("apple_id");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
 -- CreateIndex
@@ -338,6 +419,9 @@ CREATE UNIQUE INDEX "users_username_key" ON "users"("username");
 CREATE UNIQUE INDEX "users_domain_key" ON "users"("domain");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "SubsPlan_slug_key" ON "SubsPlan"("slug");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "settings_key_key" ON "settings"("key");
 
 -- CreateIndex
@@ -345,6 +429,9 @@ CREATE INDEX "_PermissionToRole_B_index" ON "_PermissionToRole"("B");
 
 -- AddForeignKey
 ALTER TABLE "accounts" ADD CONSTRAINT "accounts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "users" ADD CONSTRAINT "users_subscriptionId_fkey" FOREIGN KEY ("subscriptionId") REFERENCES "subscriptions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ucodes" ADD CONSTRAINT "ucodes_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -378,6 +465,12 @@ ALTER TABLE "user_payment_methods" ADD CONSTRAINT "user_payment_methods_user_id_
 
 -- AddForeignKey
 ALTER TABLE "payment_transactions" ADD CONSTRAINT "payment_transactions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "payment_methods" ADD CONSTRAINT "payment_methods_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_planId_fkey" FOREIGN KEY ("planId") REFERENCES "SubsPlan"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "messages" ADD CONSTRAINT "messages_sender_id_fkey" FOREIGN KEY ("sender_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;

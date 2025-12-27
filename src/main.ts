@@ -11,19 +11,25 @@ import { AppModule } from './app.module';
 import appConfig from './config/app.config';
 import { CustomExceptionFilter } from './common/exception/custom-exception.filter';
 import { SazedStorage } from './common/lib/Disk/SazedStorage';
+import { writeFileSync } from 'fs';
 
 async function bootstrap() {
   // Auto-detect storage driver: prefer MinIO/AWS S3 when env vars are present.
   const fileSystems: any = appConfig().fileSystems || {};
   const s3Cfg: any = fileSystems.s3 || {};
 
-  const envMinioEndpoint = process.env.MINIO_ENDPOINT || process.env.AWS_S3_ENDPOINT || null;
-  const envMinioBucket = process.env.MINIO_BUCKET || process.env.AWS_S3_BUCKET || null;
-  const envMinioAccess = process.env.MINIO_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID || null;
-  const envMinioSecret = process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY || null;
+  const envMinioEndpoint =
+    process.env.MINIO_ENDPOINT || process.env.AWS_S3_ENDPOINT || null;
+  const envMinioBucket =
+    process.env.MINIO_BUCKET || process.env.AWS_S3_BUCKET || null;
+  const envMinioAccess =
+    process.env.MINIO_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID || null;
+  const envMinioSecret =
+    process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY || null;
 
   // Masked log helper
-  const mask = (v: string | null | undefined) => (v ? (v.length > 6 ? `${v.slice(0,3)}***${v.slice(-3)}` : '***') : null);
+  const mask = (v: string | null | undefined) =>
+    v ? (v.length > 6 ? `${v.slice(0, 3)}***${v.slice(-3)}` : '***') : null;
   try {
     console.log('Storage env detection:', {
       AWS_S3_ENDPOINT: mask(process.env.AWS_S3_ENDPOINT),
@@ -78,16 +84,20 @@ async function bootstrap() {
     const cfg = SazedStorage.getConfig();
     if (cfg) {
       if (cfg.driver === 's3') {
-        console.log('SazedStorage effective config:', { driver: 's3', endpoint: mask((cfg.connection as any).awsEndpoint), bucket: (cfg.connection as any).awsBucket });
+        console.log('SazedStorage effective config:', {
+          driver: 's3',
+          endpoint: mask((cfg.connection as any).awsEndpoint),
+          bucket: (cfg.connection as any).awsBucket,
+        });
       } else {
-        console.log('SazedStorage effective config:', { driver: cfg.driver, rootUrl: (cfg.connection as any).rootUrl });
+        console.log('SazedStorage effective config:', {
+          driver: cfg.driver,
+          rootUrl: (cfg.connection as any).rootUrl,
+        });
       }
     }
   } catch (err) {}
 
-
-
-  
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true,
   });
@@ -142,6 +152,7 @@ async function bootstrap() {
     .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, options);
+  writeFileSync('./openapi.json', JSON.stringify(document, null, 2));
   SwaggerModule.setup('api/docs', app, document);
   // end swagger
 

@@ -11,7 +11,15 @@ import { MessageService } from './message.service';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { MessageGateway } from './message.gateway';
 import { Request } from 'express';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
 @ApiBearerAuth()
@@ -24,7 +32,14 @@ export class MessageController {
     private readonly messageGateway: MessageGateway,
   ) {}
 
-  @ApiOperation({ summary: 'Send message' })
+  @ApiOperation({
+    summary: 'Send message',
+    description:
+      'Sends a message to a conversation and broadcasts it over websocket to conversation room subscribers.',
+  })
+  @ApiOkResponse({ description: 'Message sent successfully.' })
+  @ApiBadRequestResponse({ description: 'Invalid conversation/receiver or payload.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
   @Post()
   async create(
     @Req() req: Request,
@@ -61,7 +76,35 @@ export class MessageController {
     }
   }
 
-  @ApiOperation({ summary: 'Get all messages' })
+  @ApiOperation({
+    summary: 'Get conversation messages',
+    description:
+      'Returns message list for a conversation with optional cursor-based pagination.',
+  })
+  @ApiQuery({
+    name: 'conversation_id',
+    required: true,
+    type: String,
+    description: 'Target conversation id.',
+    example: 'cm8q1n1f50000kq3g7d9h2zab',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Maximum number of messages to fetch (default: 20).',
+    example: 20,
+  })
+  @ApiQuery({
+    name: 'cursor',
+    required: false,
+    type: String,
+    description: 'Message id cursor for pagination.',
+    example: 'cm8q7i8mp0001xv57kgaf4n23',
+  })
+  @ApiOkResponse({ description: 'Messages fetched successfully.' })
+  @ApiBadRequestResponse({ description: 'Conversation id is missing/invalid.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
   @Get()
   async findAll(
     @Req() req: Request,

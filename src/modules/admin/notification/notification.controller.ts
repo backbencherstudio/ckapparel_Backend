@@ -1,6 +1,14 @@
 import { Controller, Get, Param, Delete, UseGuards, Req } from '@nestjs/common';
 import { NotificationService } from './notification.service';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 import { Role } from '../../../common/guard/role/role.enum';
 import { Roles } from '../../../common/guard/role/roles.decorator';
 import { RolesGuard } from '../../../common/guard/role/roles.guard';
@@ -15,7 +23,12 @@ import { Request } from 'express';
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
-  @ApiOperation({ summary: 'Get all notifications' })
+  @ApiOperation({
+    summary: 'Get all admin notifications',
+    description: 'Returns notifications for the currently authenticated admin user.',
+  })
+  @ApiOkResponse({ description: 'Notifications fetched successfully.' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })
   @Get()
   async findAll(@Req() req: Request) {
     try {
@@ -32,7 +45,19 @@ export class NotificationController {
     }
   }
 
-  @ApiOperation({ summary: 'Delete notification' })
+  @ApiOperation({
+    summary: 'Delete notification',
+    description: 'Deletes a notification by id for current admin user.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Notification id.',
+    required: true,
+    example: 'cm8q1n1f50000kq3g7d9h2zab',
+  })
+  @ApiOkResponse({ description: 'Notification deleted successfully.' })
+  @ApiBadRequestResponse({ description: 'Invalid notification id.' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })
   @Delete(':id')
   async remove(@Req() req: Request, @Param('id') id: string) {
     try {
@@ -48,7 +73,12 @@ export class NotificationController {
     }
   }
 
-  @ApiOperation({ summary: 'Delete all notifications' })
+  @ApiOperation({
+    summary: 'Delete all notifications',
+    description: 'Deletes all notifications for current admin user.',
+  })
+  @ApiOkResponse({ description: 'All notifications deleted successfully.' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })
   @Delete()
   async removeAll(@Req() req: Request) {
     try {

@@ -1,8 +1,15 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MinLength,
+} from 'class-validator';
 
-export class CreateUserDto {
+export class CreateUserAdminDto {
   @IsNotEmpty()
+  @IsString()
   @ApiProperty({
     description: 'The name of the user',
     example: 'John Doe',
@@ -10,6 +17,7 @@ export class CreateUserDto {
   name: string;
 
   @IsNotEmpty()
+  @IsEmail()
   @ApiProperty({
     description: 'The email of the user',
     example: 'john.doe@example.com',
@@ -17,6 +25,8 @@ export class CreateUserDto {
   email: string;
 
   @IsNotEmpty()
+  @IsString()
+  @MinLength(8)
   @ApiProperty({
     description: 'The password of the user',
     example: 'password',
@@ -24,28 +34,32 @@ export class CreateUserDto {
   password: string;
 
   @IsOptional()
-  @ApiProperty({
+  @IsString()
+  @ApiPropertyOptional({
     description: 'The type of the user',
     example: 'user',
   })
   type?: string;
 
   @IsOptional()
-  @ApiProperty({
+  @IsString()
+  @ApiPropertyOptional({
     description: 'The avatar of the user',
     example: 'avatar.png',
   })
   avatar?: string;
 
   @IsOptional()
-  @ApiProperty({
+  @IsString()
+  @ApiPropertyOptional({
     description: 'The date of birth of the user',
     example: '1990-01-01',
   })
   date_of_birth?: string;
 
   @IsOptional()
-  @ApiProperty({
+  @IsString()
+  @ApiPropertyOptional({
     description: 'The gender of the user',
     example: 'male',
   })
@@ -53,7 +67,8 @@ export class CreateUserDto {
 
 
   @IsOptional()
-  @ApiProperty({
+  @IsString()
+  @ApiPropertyOptional({
     description: 'The location of the user',
     example: 'New York, USA',
   })

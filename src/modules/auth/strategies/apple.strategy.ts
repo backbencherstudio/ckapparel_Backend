@@ -3,7 +3,6 @@ import { PassportStrategy } from '@nestjs/passport';
 // import { AppleStrategy } from 'passport-apple';
 import { Strategy, VerifyCallback } from 'passport-apple';
 import { AuthService } from '../auth.service';
-const AppleStrategy = require('passport-apple');
 import { PrismaService } from 'src/prisma/prisma.service';
 import appConfig from '../../../config/app.config';
 

@@ -191,21 +191,19 @@ export class UserRepository {
    */
   static async createUser({
     name,
-    first_name,
-    last_name,
     email,
-    password,
     phone_number,
+    date_of_birth,
+    password,
     role_id = null,
     type = 'user',
     avatar,
   }: {
     name?: string;
-    first_name?: string;
-    last_name?: string;
     email: string;
-    password: string;
     phone_number?: string;
+    date_of_birth?: string;
+    password: string;
     role_id?: string;
     type?: string;
     avatar?: string;
@@ -215,15 +213,7 @@ export class UserRepository {
       if (name) {
         data['name'] = name;
       }
-      if (first_name) {
-        data['first_name'] = first_name;
-      }
-      if (last_name) {
-        data['last_name'] = last_name;
-      }
-      if (phone_number) {
-        data['phone_number'] = phone_number;
-      }
+
       if (email) {
         // Check if email already exist
         const userEmailExist = await UserRepository.exist({
@@ -240,6 +230,15 @@ export class UserRepository {
 
         data['email'] = email;
       }
+
+      if (date_of_birth) {
+        data['date_of_birth'] = date_of_birth;
+      }
+
+      if (phone_number) {
+        data['phone_number'] = phone_number;
+      }
+
       if (password) {
         data['password'] = await bcrypt.hash(
           password,

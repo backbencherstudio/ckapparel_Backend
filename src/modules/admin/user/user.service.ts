@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { CreateUserAdminDto } from './dto/create-user.dto';
+import { UpdateUserAdminDto } from './dto/update-user.dto';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { UserRepository } from '../../../common/repository/user/user.repository';
 import appConfig from '../../../config/app.config';
@@ -11,9 +11,9 @@ import { DateHelper } from '../../../common/helper/date.helper';
 export class UserService {
   constructor(private prisma: PrismaService) {}
 
-  async create(createUserDto: CreateUserDto) {
+  async create(createUserAdminDto: CreateUserAdminDto) {
     try {
-      const user = await UserRepository.createUser(createUserDto);
+      const user = await UserRepository.createUser(createUserAdminDto);
 
       if (user.success) {
         return {
@@ -190,9 +190,9 @@ export class UserService {
     }
   }
 
-  async update(id: string, updateUserDto: UpdateUserDto) {
+  async update(id: string, updateUserAdminDto: UpdateUserAdminDto) {
     try {
-      const user = await UserRepository.updateUser(id, updateUserDto);
+      const user = await UserRepository.updateUser(id, updateUserAdminDto);
 
       if (user.success) {
         return {

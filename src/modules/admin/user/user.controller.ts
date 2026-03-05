@@ -10,27 +10,44 @@ import {
   Query,
 } from '@nestjs/common';
 import { UserService } from './user.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { CreateUserAdminDto } from './dto/create-user.dto';
+import { UpdateUserAdminDto } from './dto/update-user.dto';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiBody,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 import { Role } from '../../../common/guard/role/role.enum';
 import { Roles } from '../../../common/guard/role/roles.decorator';
 import { RolesGuard } from '../../../common/guard/role/roles.guard';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
 @ApiBearerAuth()
-@ApiTags('User')
+@ApiTags('Admin User Management')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)
 @Controller('admin/user')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
-  @ApiResponse({ description: 'Create a user' })
+  @ApiOperation({
+    summary: 'Create admin-managed user',
+    description: 'Creates a user from admin panel.',
+  })
+  @ApiBody({ type: CreateUserAdminDto })
+  @ApiOkResponse({ description: 'User created successfully.' })
+  @ApiBadRequestResponse({ description: 'Invalid user payload.' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })
   @Post()
-  async create(@Body() createUserDto: CreateUserDto) {
+  async create(@Body() createUserAdminDto: CreateUserAdminDto) {
     try {
-      const user = await this.userService.create(createUserDto);
+      const user = await this.userService.create(createUserAdminDto);
       return user;
     } catch (error) {
       return {
@@ -40,7 +57,15 @@ export class UserController {
     }
   }
 
-  @ApiResponse({ description: 'Get all users' })
+  @ApiOperation({
+    summary: 'Get all users',
+    description: 'Returns users with optional search/type/approval filtering.',
+  })
+  @ApiQuery({ name: 'q', required: false, description: 'Search text.', example: 'john' })
+  @ApiQuery({ name: 'type', required: false, description: 'User type filter.', example: 'coach' })
+  @ApiQuery({ name: 'approved', required: false, description: 'Approval status filter.', example: '1' })
+  @ApiOkResponse({ description: 'Users fetched successfully.' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })
   @Get()
   async findAll(
     @Query() query: { q?: string; type?: string; approved?: string },
@@ -62,7 +87,14 @@ export class UserController {
 
   // approve user
   @Roles(Role.ADMIN)
-  @ApiResponse({ description: 'Approve a user' })
+  @ApiOperation({
+    summary: 'Approve user',
+    description: 'Approves a pending user by id.',
+  })
+  @ApiParam({ name: 'id', description: 'User id.', example: 'cm8q1n1f50000kq3g7d9h2zab' })
+  @ApiOkResponse({ description: 'User approved successfully.' })
+  @ApiBadRequestResponse({ description: 'Invalid user id.' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })
   @Post(':id/approve')
   async approve(@Param('id') id: string) {
     try {
@@ -78,7 +110,14 @@ export class UserController {
 
   // reject user
   @Roles(Role.ADMIN)
-  @ApiResponse({ description: 'Reject a user' })
+  @ApiOperation({
+    summary: 'Reject user',
+    description: 'Rejects a pending user by id.',
+  })
+  @ApiParam({ name: 'id', description: 'User id.', example: 'cm8q1n1f50000kq3g7d9h2zab' })
+  @ApiOkResponse({ description: 'User rejected successfully.' })
+  @ApiBadRequestResponse({ description: 'Invalid user id.' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })
   @Post(':id/reject')
   async reject(@Param('id') id: string) {
     try {
@@ -92,7 +131,14 @@ export class UserController {
     }
   }
 
-  @ApiResponse({ description: 'Get a user by id' })
+  @ApiOperation({
+    summary: 'Get user by id',
+    description: 'Returns details of one user by id.',
+  })
+  @ApiParam({ name: 'id', description: 'User id.', example: 'cm8q1n1f50000kq3g7d9h2zab' })
+  @ApiOkResponse({ description: 'User fetched successfully.' })
+  @ApiBadRequestResponse({ description: 'Invalid user id.' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })
   @Get(':id')
   async findOne(@Param('id') id: string) {
     try {
@@ -106,10 +152,19 @@ export class UserController {
     }
   }
 
+  @ApiOperation({
+    summary: 'Update user',
+    description: 'Updates an existing user by id.',
+  })
+  @ApiParam({ name: 'id', description: 'User id.', example: 'cm8q1n1f50000kq3g7d9h2zab' })
+  @ApiBody({ type: UpdateUserAdminDto })
+  @ApiOkResponse({ description: 'User updated successfully.' })
+  @ApiBadRequestResponse({ description: 'Invalid user id or payload.' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+  async update(@Param('id') id: string, @Body() updateUserAdminDto: UpdateUserAdminDto) {
     try {
-      const user = await this.userService.update(id, updateUserDto);
+      const user = await this.userService.update(id, updateUserAdminDto);
       return user;
     } catch (error) {
       return {
@@ -119,6 +174,14 @@ export class UserController {
     }
   }
 
+  @ApiOperation({
+    summary: 'Delete user',
+    description: 'Deletes a user by id.',
+  })
+  @ApiParam({ name: 'id', description: 'User id.', example: 'cm8q1n1f50000kq3g7d9h2zab' })
+  @ApiOkResponse({ description: 'User deleted successfully.' })
+  @ApiBadRequestResponse({ description: 'Invalid user id.' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })
   @Delete(':id')
   async remove(@Param('id') id: string) {
     try {

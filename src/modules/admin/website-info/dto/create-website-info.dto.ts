@@ -1,10 +1,10 @@
 import { IsOptional, IsString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateWebsiteInfoDto {
   @IsOptional()
   @IsString()
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'The name of the website',
     example: 'My Website',
   })
@@ -12,7 +12,7 @@ export class CreateWebsiteInfoDto {
 
   @IsOptional()
   @IsString()
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'The phone number of the website',
     example: '081234567890',
   })
@@ -20,7 +20,7 @@ export class CreateWebsiteInfoDto {
 
   @IsOptional()
   @IsString()
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'The email of the website',
     example: 'mywebsite@gmail.com',
   })
@@ -28,27 +28,31 @@ export class CreateWebsiteInfoDto {
 
   @IsOptional()
   @IsString()
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'The address of the website',
     example: 'Jl. Raya No. 123, Jakarta, Indonesia',
   })
   address?: string;
 
   @IsOptional()
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'The logo of the website',
+    type: 'string',
+    format: 'binary',
   })
   logo?: Express.Multer.File[];
 
   @IsOptional()
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'The favicon of the website',
+    type: 'string',
+    format: 'binary',
   })
   favicon?: Express.Multer.File[];
 
   @IsOptional()
   @IsString()
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'The copyright of the website',
     example: '© 2025 My Website. All rights reserved.',
   })
@@ -56,7 +60,7 @@ export class CreateWebsiteInfoDto {
 
   @IsOptional()
   @IsString()
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'The cancellation policy of the website',
   })
   cancellation_policy?: string;

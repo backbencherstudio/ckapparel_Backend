@@ -1,0 +1,2711 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "AppController_root",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/api/status": {
+      "get": {
+        "operationId": "AppController_getApiStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/api/test-chunk-stream": {
+      "get": {
+        "operationId": "AppController_chunkStream",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/api/test-file-stream": {
+      "get": {
+        "operationId": "AppController_testFileStream",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/api/test-file-upload": {
+      "post": {
+        "operationId": "AppController_test",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "description": "Returns authenticated user profile data from the access token context.",
+        "operationId": "AuthController_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "User profile fetched successfully."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get current user profile",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/register/request": {
+      "post": {
+        "description": "Creates a pending registration and sends OTP to the email. Frontend should call /register/verify after receiving OTP.",
+        "operationId": "AuthController_requestRegistration",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "John Doe"
+                  },
+                  "email": {
+                    "type": "string",
+                    "example": "john.doe@example.com"
+                  },
+                  "phone_number": {
+                    "type": "string",
+                    "example": "+1234567890"
+                  },
+                  "date_of_birth": {
+                    "type": "string",
+                    "example": "1990-01-01"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "password123"
+                  },
+                  "type": {
+                    "type": "string",
+                    "example": "user"
+                  },
+                  "avatar": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OTP sent successfully."
+          },
+          "400": {
+            "description": "Invalid registration input."
+          }
+        },
+        "summary": "Step 1: Request registration (send OTP)",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/register/verify": {
+      "post": {
+        "description": "Verifies OTP and creates the account. Frontend should store returned authorization tokens after success.",
+        "operationId": "AuthController_verifyAndRegister",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyOtpDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Registration completed successfully."
+          },
+          "400": {
+            "description": "Invalid or expired OTP, or registration creation failed."
+          }
+        },
+        "summary": "Step 2: Verify OTP and complete registration",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "description": "Authenticates user with email/password and returns access + refresh tokens.",
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful."
+          },
+          "401": {
+            "description": "Invalid credentials."
+          }
+        },
+        "summary": "Login user",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/refresh-token": {
+      "post": {
+        "description": "Issues a new access token using an existing valid refresh token.",
+        "operationId": "AuthController_refreshToken",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshTokenDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token refreshed successfully."
+          },
+          "401": {
+            "description": "Invalid user token context."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Refresh token",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "description": "Revokes refresh token for current authenticated user.",
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Logged out successfully."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Logout user",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/update": {
+      "patch": {
+        "description": "Updates profile fields for authenticated user. Avatar should be sent as multipart file.",
+        "operationId": "AuthController_updateUser",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "John Doe"
+                  },
+                  "country": {
+                    "type": "string",
+                    "example": "Bangladesh"
+                  },
+                  "state": {
+                    "type": "string",
+                    "example": "Dhaka"
+                  },
+                  "city": {
+                    "type": "string",
+                    "example": "Dhaka"
+                  },
+                  "local_government": {
+                    "type": "string",
+                    "example": "Dhaka North City Corporation"
+                  },
+                  "zip_code": {
+                    "type": "string",
+                    "example": "123456"
+                  },
+                  "phone_number": {
+                    "type": "string",
+                    "example": "+91 9876543210"
+                  },
+                  "address": {
+                    "type": "string",
+                    "example": "Dhaka, Bangladesh"
+                  },
+                  "gender": {
+                    "type": "string",
+                    "example": "male"
+                  },
+                  "date_of_birth": {
+                    "type": "string",
+                    "example": "2001-11-14"
+                  },
+                  "avatar": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "User updated successfully."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update current user profile",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/forgot-password": {
+      "post": {
+        "description": "Sends an OTP/token to email for password reset flow.",
+        "operationId": "AuthController_forgotPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "example": "user@example.com"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset OTP/token sent."
+          },
+          "400": {
+            "description": "Email is missing or invalid."
+          }
+        },
+        "summary": "Forgot password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/verify-email": {
+      "post": {
+        "description": "Verifies email using OTP/token sent to the user email.",
+        "operationId": "AuthController_verifyEmail",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEmailDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email verified successfully."
+          },
+          "400": {
+            "description": "Email/token missing or invalid."
+          }
+        },
+        "summary": "Verify email",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/resend-verification-email": {
+      "post": {
+        "description": "Resends email verification OTP/token to the provided email.",
+        "operationId": "AuthController_resendVerificationEmail",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "example": "user@example.com"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Verification code resent successfully."
+          },
+          "400": {
+            "description": "Email is missing or invalid."
+          }
+        },
+        "summary": "Resend verification email",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/reset-password": {
+      "post": {
+        "description": "Resets password using email + OTP/token + new password.",
+        "operationId": "AuthController_resetPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "otp",
+                  "new_password"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "example": "user@example.com"
+                  },
+                  "otp": {
+                    "type": "string",
+                    "example": "123456"
+                  },
+                  "new_password": {
+                    "type": "string",
+                    "example": "NewPassword123!"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset successful."
+          },
+          "400": {
+            "description": "Invalid payload or token."
+          }
+        },
+        "summary": "Reset password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/change-password": {
+      "post": {
+        "description": "Changes password for currently authenticated user.",
+        "operationId": "AuthController_changePassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "old_password",
+                  "new_password"
+                ],
+                "properties": {
+                  "old_password": {
+                    "type": "string",
+                    "example": "CurrentPassword123!"
+                  },
+                  "new_password": {
+                    "type": "string",
+                    "example": "NewPassword123!"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password changed successfully."
+          },
+          "400": {
+            "description": "Missing or invalid password values."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/request-email-change": {
+      "post": {
+        "description": "Sends verification token/code for changing account email.",
+        "operationId": "AuthController_requestEmailChange",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "example": "new.user@example.com"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email change verification token sent."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Request email change",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/change-email": {
+      "post": {
+        "description": "Applies email change using verification token/code.",
+        "operationId": "AuthController_changeEmail",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "token"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "example": "new.user@example.com"
+                  },
+                  "token": {
+                    "type": "string",
+                    "example": "123456"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email changed successfully."
+          },
+          "400": {
+            "description": "Email/token missing or invalid."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Confirm email change",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/generate-2fa-secret": {
+      "post": {
+        "description": "Returns 2FA setup secret/QR payload for authenticator apps.",
+        "operationId": "AuthController_generate2FASecret",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "2FA secret generated."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Generate 2FA secret",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/verify-2fa": {
+      "post": {
+        "description": "Verifies one-time token generated by authenticator app.",
+        "operationId": "AuthController_verify2FA",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token"
+                ],
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "example": "123456"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "2FA token verified."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Verify 2FA code",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/enable-2fa": {
+      "post": {
+        "description": "Enables two-factor authentication for current user.",
+        "operationId": "AuthController_enable2FA",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "2FA enabled."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Enable 2FA",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/disable-2fa": {
+      "post": {
+        "description": "Disables two-factor authentication for current user.",
+        "operationId": "AuthController_disable2FA",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "2FA disabled."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Disable 2FA",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/google": {
+      "get": {
+        "description": "Starts Google OAuth redirect flow. Frontend should navigate browser to this URL, not call it via XHR.",
+        "operationId": "AuthController_googleLogin",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Redirects to Google OAuth consent screen."
+          }
+        },
+        "summary": "Google login (web)",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/google/redirect": {
+      "get": {
+        "description": "OAuth callback endpoint. Usually called by Google after consent, returns app auth payload.",
+        "operationId": "AuthController_googleAuthRedirect",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Google login completed and auth payload returned."
+          }
+        },
+        "summary": "Google OAuth callback (web)",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/apple": {
+      "get": {
+        "description": "Starts Apple OAuth redirect flow. Frontend should navigate browser to this URL, not call it via XHR.",
+        "operationId": "AuthController_appleAuth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Redirects to Apple sign-in page."
+          }
+        },
+        "summary": "Apple login (web)",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/apple/redirect": {
+      "get": {
+        "description": "OAuth callback endpoint. Usually called by Apple after consent, returns app auth payload.",
+        "operationId": "AuthController_appleAuthRedirect",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Apple login completed and auth payload returned."
+          }
+        },
+        "summary": "Apple OAuth callback (web)",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/google/mobile": {
+      "post": {
+        "description": "Accepts Google ID token from mobile client (Flutter/Android/iOS) and returns application auth payload.",
+        "operationId": "AuthController_googleMobile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoogleMobileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Mobile Google login successful."
+          },
+          "400": {
+            "description": "Missing or invalid Google token."
+          }
+        },
+        "summary": "Google login (mobile)",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/auth/apple/mobile": {
+      "post": {
+        "description": "Accepts Apple identity token from mobile client (Flutter/iOS) and returns application auth payload.",
+        "operationId": "AuthController_appleMobile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppleMobileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Mobile Apple login successful."
+          },
+          "400": {
+            "description": "Missing or invalid Apple identity token."
+          }
+        },
+        "summary": "Apple login (mobile)",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/notifications": {
+      "get": {
+        "operationId": "NotificationController_getAllNotifications",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get all notifications for the current user",
+        "tags": [
+          "Notification"
+        ]
+      }
+    },
+    "/api/notifications/read-all": {
+      "patch": {
+        "operationId": "NotificationController_markAllAsRead",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark all notifications as read",
+        "tags": [
+          "Notification"
+        ]
+      }
+    },
+    "/api/notifications/{id}/read": {
+      "patch": {
+        "operationId": "NotificationController_markAsRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark a specific notification as read",
+        "tags": [
+          "Notification"
+        ]
+      }
+    },
+    "/api/notifications/{id}/unread": {
+      "patch": {
+        "operationId": "NotificationController_markAsUnread",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark a specific notification as unread",
+        "tags": [
+          "Notification"
+        ]
+      }
+    },
+    "/api/notifications/{id}/delete": {
+      "delete": {
+        "operationId": "NotificationController_deleteNotification",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a specific notification",
+        "tags": [
+          "Notification"
+        ]
+      }
+    },
+    "/api/contact": {
+      "post": {
+        "operationId": "ContactController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateContactDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "summary": "Create contact",
+        "tags": [
+          "Contact"
+        ]
+      }
+    },
+    "/api/faq": {
+      "get": {
+        "operationId": "FaqController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get all faq",
+        "tags": [
+          "Faq"
+        ]
+      }
+    },
+    "/api/faq/{id}": {
+      "get": {
+        "operationId": "FaqController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Get faq by id",
+        "tags": [
+          "Faq"
+        ]
+      }
+    },
+    "/api/admin/faq": {
+      "post": {
+        "operationId": "FaqController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFaqDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create faq",
+        "tags": [
+          "Faq"
+        ]
+      },
+      "get": {
+        "operationId": "FaqController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Read all faqs",
+        "tags": [
+          "Faq"
+        ]
+      }
+    },
+    "/api/admin/faq/batch-create": {
+      "post": {
+        "operationId": "FaqController_batchCreate",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchCreateFaqDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Batch create or update faqs",
+        "tags": [
+          "Faq"
+        ]
+      }
+    },
+    "/api/admin/faq/{id}": {
+      "get": {
+        "operationId": "FaqController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Read one faq",
+        "tags": [
+          "Faq"
+        ]
+      },
+      "patch": {
+        "operationId": "FaqController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFaqDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update faq",
+        "tags": [
+          "Faq"
+        ]
+      },
+      "delete": {
+        "operationId": "FaqController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete faq",
+        "tags": [
+          "Faq"
+        ]
+      }
+    },
+    "/api/admin/contact": {
+      "post": {
+        "operationId": "ContactController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateContactDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create contact",
+        "tags": [
+          "Contact"
+        ]
+      },
+      "get": {
+        "operationId": "ContactController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Read all contacts",
+        "tags": [
+          "Contact"
+        ]
+      }
+    },
+    "/api/admin/contact/{id}": {
+      "get": {
+        "operationId": "ContactController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Read one contact",
+        "tags": [
+          "Contact"
+        ]
+      },
+      "patch": {
+        "operationId": "ContactController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateContactDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update contact",
+        "tags": [
+          "Contact"
+        ]
+      },
+      "delete": {
+        "operationId": "ContactController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete contact",
+        "tags": [
+          "Contact"
+        ]
+      }
+    },
+    "/api/admin/website-info": {
+      "post": {
+        "operationId": "WebsiteInfoController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWebsiteInfoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update website info",
+        "tags": [
+          "Website Info"
+        ]
+      },
+      "get": {
+        "operationId": "WebsiteInfoController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get website info",
+        "tags": [
+          "Website Info"
+        ]
+      }
+    },
+    "/api/admin/payment-transaction": {
+      "get": {
+        "operationId": "PaymentTransactionController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get all packages",
+        "tags": [
+          "Payment transaction"
+        ]
+      }
+    },
+    "/api/admin/payment-transaction/{id}": {
+      "get": {
+        "operationId": "PaymentTransactionController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get one package",
+        "tags": [
+          "Payment transaction"
+        ]
+      },
+      "delete": {
+        "operationId": "PaymentTransactionController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Payment transaction"
+        ]
+      }
+    },
+    "/api/admin/user": {
+      "post": {
+        "operationId": "UserController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserAdminDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "default": {
+            "description": "Create a user"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin User Management"
+        ]
+      },
+      "get": {
+        "operationId": "UserController_findAll",
+        "parameters": [],
+        "responses": {
+          "default": {
+            "description": "Get all users"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin User Management"
+        ]
+      }
+    },
+    "/api/admin/user/{id}/approve": {
+      "post": {
+        "operationId": "UserController_approve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "Approve a user"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin User Management"
+        ]
+      }
+    },
+    "/api/admin/user/{id}/reject": {
+      "post": {
+        "operationId": "UserController_reject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "Reject a user"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin User Management"
+        ]
+      }
+    },
+    "/api/admin/user/{id}": {
+      "get": {
+        "operationId": "UserController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "description": "Get a user by id"
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin User Management"
+        ]
+      },
+      "patch": {
+        "operationId": "UserController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserAdminDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin User Management"
+        ]
+      },
+      "delete": {
+        "operationId": "UserController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "Admin User Management"
+        ]
+      }
+    },
+    "/api/admin/notification": {
+      "get": {
+        "operationId": "NotificationController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get all notifications",
+        "tags": [
+          "Notification"
+        ]
+      },
+      "delete": {
+        "operationId": "NotificationController_removeAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete all notifications",
+        "tags": [
+          "Notification"
+        ]
+      }
+    },
+    "/api/admin/notification/{id}": {
+      "delete": {
+        "operationId": "NotificationController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete notification",
+        "tags": [
+          "Notification"
+        ]
+      }
+    },
+    "/api/chat/conversation": {
+      "post": {
+        "operationId": "ConversationController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConversationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create conversation",
+        "tags": [
+          "Conversation"
+        ]
+      },
+      "get": {
+        "operationId": "ConversationController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get all conversations",
+        "tags": [
+          "Conversation"
+        ]
+      }
+    },
+    "/api/chat/conversation/{id}": {
+      "get": {
+        "operationId": "ConversationController_findOne",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a conversation by id",
+        "tags": [
+          "Conversation"
+        ]
+      },
+      "delete": {
+        "operationId": "ConversationController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a conversation",
+        "tags": [
+          "Conversation"
+        ]
+      }
+    },
+    "/api/chat/message": {
+      "post": {
+        "operationId": "MessageController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Send message",
+        "tags": [
+          "Message"
+        ]
+      },
+      "get": {
+        "operationId": "MessageController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get all messages",
+        "tags": [
+          "Message"
+        ]
+      }
+    },
+    "/api/chat/user": {
+      "get": {
+        "operationId": "UserController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/api/payment/stripe/webhook": {
+      "post": {
+        "operationId": "StripeController_handleWebhook",
+        "parameters": [
+          {
+            "name": "stripe-signature",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Stripe"
+        ]
+      }
+    },
+    "/api/subscription/start-trial": {
+      "post": {
+        "description": "Starts a trial subscription for the authenticated user using a plan ID.",
+        "operationId": "SubscriptionController_startTrial",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "planId"
+                ],
+                "properties": {
+                  "planId": {
+                    "type": "string",
+                    "example": "plan_monthly_basic",
+                    "description": "Internal or provider plan identifier."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Trial subscription started successfully."
+          },
+          "400": {
+            "description": "Invalid plan ID or trial not allowed."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start trial subscription",
+        "tags": [
+          "subscription"
+        ]
+      }
+    },
+    "/api/subscription/create-product-price": {
+      "post": {
+        "description": "Creates a subscription product and price configuration (typically for admin/internal setup).",
+        "operationId": "SubscriptionController_createProductAndPrice",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProductAndPriceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Product and price created successfully."
+          },
+          "400": {
+            "description": "Invalid product/price payload."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create product and price",
+        "tags": [
+          "subscription"
+        ]
+      }
+    },
+    "/api/subscription/add/cards": {
+      "post": {
+        "description": "Adds/attaches a card to authenticated user payment profile using provider token.",
+        "operationId": "SubscriptionController_addCard",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddCardDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Card added successfully."
+          },
+          "400": {
+            "description": "Invalid card token or product reference."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add payment card",
+        "tags": [
+          "subscription"
+        ]
+      }
+    },
+    "/api/subscription/status": {
+      "get": {
+        "description": "Returns active/trial/cancelled status and relevant subscription metadata for authenticated user.",
+        "operationId": "SubscriptionController_getSubscriptionStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Subscription status fetched successfully."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get current user subscription status",
+        "tags": [
+          "subscription"
+        ]
+      }
+    },
+    "/api/subscription/plans": {
+      "get": {
+        "description": "Returns all available subscription plans for purchase/trial.",
+        "operationId": "SubscriptionController_getAllPlans",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Plans fetched successfully."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get all plans",
+        "tags": [
+          "subscription"
+        ]
+      }
+    },
+    "/api/subscription/cancel": {
+      "post": {
+        "description": "Cancels subscription for the authenticated user. Cancellation timing depends on billing settings.",
+        "operationId": "SubscriptionController_cancelSubscription",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Subscription cancelled successfully."
+          },
+          "400": {
+            "description": "No cancellable subscription found."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel current subscription",
+        "tags": [
+          "subscription"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Application Name api",
+    "description": "Application Name api docs",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [
+    {
+      "name": "Application Name",
+      "description": ""
+    }
+  ],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "VerifyOtpDto": {
+        "type": "object",
+        "properties": {
+          "otp": {
+            "type": "string",
+            "description": "The OTP code to verify",
+            "example": "123456"
+          },
+          "email": {
+            "type": "string",
+            "description": "The user email",
+            "example": "user@example.com"
+          }
+        },
+        "required": [
+          "otp",
+          "email"
+        ]
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "description": "The email of the user",
+            "example": "user@example.com"
+          },
+          "password": {
+            "type": "string",
+            "description": "The password of the user",
+            "example": "password123"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "RefreshTokenDto": {
+        "type": "object",
+        "properties": {
+          "refresh_token": {
+            "type": "string",
+            "description": "The refresh token issued during login",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+          }
+        },
+        "required": [
+          "refresh_token"
+        ]
+      },
+      "VerifyEmailDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "otp": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "otp"
+        ]
+      },
+      "GoogleMobileDto": {
+        "type": "object",
+        "properties": {
+          "idToken": {
+            "type": "string",
+            "description": "Google ID token from Flutter (GoogleSignInAuthentication.idToken)"
+          },
+          "timezone": {
+            "type": "string",
+            "description": "IANA timezone string (e.g., America/New_York, Asia/Dhaka)",
+            "example": "UTC"
+          }
+        },
+        "required": [
+          "idToken"
+        ]
+      },
+      "AppleMobileDto": {
+        "type": "object",
+        "properties": {
+          "identityToken": {
+            "type": "string",
+            "description": "Apple identity token (JWT) from Flutter sign_in_with_apple credential.identityToken"
+          },
+          "email": {
+            "type": "string",
+            "description": "Apple email (may be present only on first login)"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string",
+            "description": "IANA timezone string (e.g., America/New_York, Asia/Dhaka)",
+            "example": "UTC"
+          }
+        },
+        "required": [
+          "identityToken"
+        ]
+      },
+      "CreateContactDto": {
+        "type": "object",
+        "properties": {
+          "first_name": {
+            "type": "string",
+            "description": "First name",
+            "example": "John"
+          },
+          "last_name": {
+            "type": "string",
+            "description": "Last name",
+            "example": "Doe"
+          },
+          "email": {
+            "type": "string",
+            "description": "Email",
+            "example": "john.doe@example.com"
+          },
+          "phone_number": {
+            "type": "string",
+            "description": "Phone number",
+            "example": "+1234567890"
+          },
+          "message": {
+            "type": "string",
+            "description": "Message",
+            "example": "Hello, I have a question about your product."
+          }
+        },
+        "required": [
+          "first_name",
+          "last_name",
+          "email",
+          "phone_number",
+          "message"
+        ]
+      },
+      "CreateFaqDto": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "description": "FAQ question",
+            "example": "What is the price of the hotel?"
+          },
+          "answer": {
+            "type": "string",
+            "description": "FAQ answer",
+            "example": "The price of the hotel is 10000 BDT per night."
+          },
+          "sort_order": {
+            "type": "number",
+            "description": "Sort order",
+            "example": 1
+          }
+        },
+        "required": [
+          "question",
+          "answer",
+          "sort_order"
+        ]
+      },
+      "BatchCreateFaqDto": {
+        "type": "object",
+        "properties": {
+          "faqs": {
+            "description": "Faq data array",
+            "example": [
+              {
+                "question": "What is the price of the hotel?",
+                "answer": "The price of the hotel is 10000 BDT per night.",
+                "sort_order": 1
+              }
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "faqs"
+        ]
+      },
+      "UpdateFaqDto": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "description": "FAQ question",
+            "example": "What is the price of the hotel?"
+          },
+          "answer": {
+            "type": "string",
+            "description": "FAQ answer",
+            "example": "The price of the hotel is 10000 BDT per night."
+          },
+          "sort_order": {
+            "type": "number",
+            "description": "Sort order",
+            "example": 1
+          }
+        }
+      },
+      "UpdateContactDto": {
+        "type": "object",
+        "properties": {
+          "first_name": {
+            "type": "string",
+            "description": "First name",
+            "example": "John"
+          },
+          "last_name": {
+            "type": "string",
+            "description": "Last name",
+            "example": "Doe"
+          },
+          "email": {
+            "type": "string",
+            "description": "Email",
+            "example": "john.doe@example.com"
+          },
+          "phone_number": {
+            "type": "string",
+            "description": "Phone number",
+            "example": "+1234567890"
+          },
+          "message": {
+            "type": "string",
+            "description": "Message",
+            "example": "Hello, I have a question about your product."
+          }
+        }
+      },
+      "CreateWebsiteInfoDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the website",
+            "example": "My Website"
+          },
+          "phone_number": {
+            "type": "string",
+            "description": "The phone number of the website",
+            "example": "081234567890"
+          },
+          "email": {
+            "type": "string",
+            "description": "The email of the website",
+            "example": "mywebsite@gmail.com"
+          },
+          "address": {
+            "type": "string",
+            "description": "The address of the website",
+            "example": "Jl. Raya No. 123, Jakarta, Indonesia"
+          },
+          "logo": {
+            "description": "The logo of the website",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "favicon": {
+            "description": "The favicon of the website",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "copyright": {
+            "type": "string",
+            "description": "The copyright of the website",
+            "example": "© 2025 My Website. All rights reserved."
+          },
+          "cancellation_policy": {
+            "type": "string",
+            "description": "The cancellation policy of the website"
+          }
+        },
+        "required": [
+          "name",
+          "phone_number",
+          "email",
+          "address",
+          "logo",
+          "favicon",
+          "copyright",
+          "cancellation_policy"
+        ]
+      },
+      "CreateUserAdminDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the user",
+            "example": "John Doe"
+          },
+          "email": {
+            "type": "string",
+            "description": "The email of the user",
+            "example": "john.doe@example.com"
+          },
+          "password": {
+            "type": "string",
+            "description": "The password of the user",
+            "example": "password"
+          },
+          "type": {
+            "type": "string",
+            "description": "The type of the user",
+            "example": "user"
+          },
+          "avatar": {
+            "type": "string",
+            "description": "The avatar of the user",
+            "example": "avatar.png"
+          },
+          "date_of_birth": {
+            "type": "string",
+            "description": "The date of birth of the user",
+            "example": "1990-01-01"
+          },
+          "gender": {
+            "type": "string",
+            "description": "The gender of the user",
+            "example": "male"
+          },
+          "address": {
+            "type": "string",
+            "description": "The location of the user",
+            "example": "New York, USA"
+          }
+        },
+        "required": [
+          "name",
+          "email",
+          "password",
+          "type",
+          "avatar",
+          "date_of_birth",
+          "gender",
+          "address"
+        ]
+      },
+      "UpdateUserAdminDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the user",
+            "example": "John Doe"
+          },
+          "email": {
+            "type": "string",
+            "description": "The email of the user",
+            "example": "john.doe@example.com"
+          },
+          "password": {
+            "type": "string",
+            "description": "The password of the user",
+            "example": "password"
+          },
+          "type": {
+            "type": "string",
+            "description": "The type of the user",
+            "example": "user"
+          },
+          "avatar": {
+            "type": "string",
+            "description": "The avatar of the user",
+            "example": "avatar.png"
+          },
+          "date_of_birth": {
+            "type": "string",
+            "description": "The date of birth of the user",
+            "example": "1990-01-01"
+          },
+          "gender": {
+            "type": "string",
+            "description": "The gender of the user",
+            "example": "male"
+          },
+          "address": {
+            "type": "string",
+            "description": "The location of the user",
+            "example": "New York, USA"
+          }
+        }
+      },
+      "CreateConversationDto": {
+        "type": "object",
+        "properties": {
+          "creator_id": {
+            "type": "string",
+            "description": "The id of the creator"
+          },
+          "participant_id": {
+            "type": "string",
+            "description": "The id of the participant"
+          }
+        },
+        "required": [
+          "creator_id",
+          "participant_id"
+        ]
+      },
+      "CreateMessageDto": {
+        "type": "object",
+        "properties": {
+          "receiver_id": {
+            "type": "string"
+          },
+          "conversation_id": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "receiver_id",
+          "conversation_id",
+          "message"
+        ]
+      },
+      "CreateProductAndPriceDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Display name of the subscription product.",
+            "example": "Pro Coaching Plan"
+          },
+          "price": {
+            "type": "number",
+            "description": "Price amount in major currency unit.",
+            "example": 49.99
+          },
+          "currency": {
+            "type": "string",
+            "description": "ISO currency code.",
+            "example": "usd",
+            "default": "usd"
+          },
+          "interval": {
+            "type": "string",
+            "description": "Billing interval for recurring subscription.",
+            "enum": [
+              "month",
+              "year"
+            ],
+            "example": "month"
+          },
+          "interval_count": {
+            "type": "number",
+            "description": "Number of intervals between billings.",
+            "example": 1,
+            "default": 1
+          },
+          "product_description": {
+            "type": "string",
+            "description": "Optional product description shown in billing UI.",
+            "example": "Access to all coaching sessions and premium content."
+          },
+          "price_description": {
+            "type": "string",
+            "description": "Optional price description shown in billing UI.",
+            "example": "Billed monthly. Cancel anytime."
+          },
+          "trialDays": {
+            "type": "number",
+            "description": "Trial duration in days.",
+            "example": 14
+          },
+          "type": {
+            "type": "string",
+            "description": "Internal subscription plan type.",
+            "enum": [
+              "FREE",
+              "TRIALING",
+              "BASIC",
+              "PREMIUM"
+            ],
+            "example": "FREE"
+          }
+        },
+        "required": [
+          "name",
+          "price"
+        ]
+      },
+      "AddCardDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Single-use payment token from payment provider/SDK.",
+            "example": "tok_visa"
+          },
+          "productId": {
+            "type": "string",
+            "description": "Product or price identifier used to attach the card in billing flow.",
+            "example": "prod_Ra9XfS8Yk2"
+          }
+        },
+        "required": [
+          "token",
+          "productId"
+        ]
+      }
+    }
+  }
+}

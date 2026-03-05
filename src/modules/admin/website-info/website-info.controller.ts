@@ -11,8 +11,16 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { memoryStorage } from 'multer';
-import { ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import { ApiTags } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 import { WebsiteInfoService } from './website-info.service';
 import { CreateWebsiteInfoDto } from './dto/create-website-info.dto';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
@@ -29,7 +37,36 @@ import { Role } from '../../../common/guard/role/role.enum';
 export class WebsiteInfoController {
   constructor(private readonly websiteInfoService: WebsiteInfoService) {}
 
-  @ApiOperation({ summary: 'Update website info' })
+  @ApiOperation({
+    summary: 'Create or update website info',
+    description:
+      'Creates or updates website information and optionally uploads logo/favicon files.',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', example: 'My Website' },
+        phone_number: { type: 'string', example: '081234567890' },
+        email: { type: 'string', example: 'mywebsite@gmail.com' },
+        address: {
+          type: 'string',
+          example: 'Jl. Raya No. 123, Jakarta, Indonesia',
+        },
+        copyright: {
+          type: 'string',
+          example: '© 2026 My Website. All rights reserved.',
+        },
+        cancellation_policy: { type: 'string' },
+        logo: { type: 'string', format: 'binary' },
+        favicon: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'Website info saved successfully.' })
+  @ApiBadRequestResponse({ description: 'Invalid website info payload.' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })
   @Post()
   @UseInterceptors(
     FileFieldsInterceptor(
@@ -69,7 +106,12 @@ export class WebsiteInfoController {
     }
   }
 
-  @ApiOperation({ summary: 'Get website info' })
+  @ApiOperation({
+    summary: 'Get website info',
+    description: 'Returns current website information settings.',
+  })
+  @ApiOkResponse({ description: 'Website info fetched successfully.' })
+  @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })
   @Get()
   async findAll() {
     try {

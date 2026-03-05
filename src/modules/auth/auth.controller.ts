@@ -9,34 +9,48 @@ import {
   Req,
   Res,
   UploadedFile,
-  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOkResponse,
+  ApiOperation,
+  ApiUnauthorizedResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { memoryStorage } from 'multer';
-import {
-  FileFieldsInterceptor,
-  FileInterceptor,
-} from '@nestjs/platform-express';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { CreateUserDto } from './dto/create-user.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import appConfig from '../../config/app.config';
 import { AuthGuard } from '@nestjs/passport';
 import { AppleAuthGuard } from './guards/apple-auth.guard';
+import { AppleMobileDto } from './dto/apple-mobile.dto';
+import { GoogleMobileDto } from './dto/google-mobile.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { LoginDto } from './dto/login.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  @ApiOperation({ summary: 'Get user details' })
+  @ApiOperation({
+    summary: 'Get current user profile',
+    description: 'Returns authenticated user profile data from the access token context.',
+  })
   @ApiBearerAuth()
+  @ApiOkResponse({ description: 'User profile fetched successfully.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
   @UseGuards(JwtAuthGuard)
   @Get('me')
   async me(@Req() req: Request) {
@@ -55,75 +69,166 @@ export class AuthController {
     }
   }
 
-  @ApiOperation({ summary: 'Register a user' })
-  @Post('register')
+  @ApiOperation({
+    summary: 'Step 1: Request registration (send OTP)',
+    description:
+      'Creates a pending registration and sends OTP to the email. Frontend should call /register/verify after receiving OTP.',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['name', 'email', 'password'],
+      properties: {
+        name: { type: 'string', example: 'John Doe' },
+        email: { type: 'string', example: 'john.doe@example.com' },
+        phone_number: { type: 'string', example: '+1234567890' },
+        date_of_birth: { type: 'string', example: '1990-01-01' },
+        password: { type: 'string', example: 'password123' },
+        type: { type: 'string', example: 'user' },
+        avatar: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'OTP sent successfully.' })
+  @ApiBadRequestResponse({ description: 'Invalid registration input.' })
+  @Post('register/request')
   @UseInterceptors(
     FileInterceptor('avatar', {
       storage: memoryStorage(),
     }),
   )
-  async create(
+  async requestRegistration(
     @Body() data: CreateUserDto,
-
     @UploadedFile() avatar?: Express.Multer.File,
   ) {
     try {
-      const name = data.name;
-      const first_name = data.first_name;
-      const last_name = data.last_name;
-      const email = data.email;
-      const password = data.password;
-      const type = data.type;
-      const avatarFile = avatar;
-
-      console.log('hello', avatarFile);
-
-      if (!name) {
-        throw new HttpException('Name not provided', HttpStatus.UNAUTHORIZED);
+      if (!data.name) {
+        throw new HttpException('Name not provided', HttpStatus.BAD_REQUEST);
       }
-      if (!first_name) {
-        throw new HttpException(
-          'First name not provided',
-          HttpStatus.UNAUTHORIZED,
-        );
+      if (!data.email) {
+        throw new HttpException('Email not provided', HttpStatus.BAD_REQUEST);
       }
-      if (!last_name) {
-        throw new HttpException(
-          'Last name not provided',
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
-      if (!email) {
-        throw new HttpException('Email not provided', HttpStatus.UNAUTHORIZED);
-      }
-      if (!password) {
+      if (!data.password) {
         throw new HttpException(
           'Password not provided',
-          HttpStatus.UNAUTHORIZED,
+          HttpStatus.BAD_REQUEST,
         );
       }
 
-      const response = await this.authService.register({
-        name: name,
-        first_name: first_name,
-        last_name: last_name,
-        email: email,
-        password: password,
-        type: type,
-        avatar: avatarFile,
+      const response = await this.authService.requestRegistration({
+        name: data.name,
+        email: data.email,
+        phone_number: data.phone_number,
+        date_of_birth: data.date_of_birth,
+        password: data.password,
+        type: data.type,
+        avatar: avatar,
       });
 
       return response;
     } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-      };
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(error?.message, HttpStatus.BAD_REQUEST);
     }
   }
 
+  @ApiOperation({
+    summary: 'Step 2: Verify OTP and complete registration',
+    description:
+      'Verifies OTP and creates the account. Frontend should store returned authorization tokens after success.',
+  })
+  @ApiBody({ type: VerifyOtpDto })
+  @ApiOkResponse({ description: 'Registration completed successfully.' })
+  @ApiBadRequestResponse({ description: 'Invalid or expired OTP, or registration creation failed.' })
+  @Post('register/verify')
+  async verifyAndRegister(@Body() data: VerifyOtpDto) {
+    try {
+      if (!data.email) {
+        throw new HttpException('Email not provided', HttpStatus.BAD_REQUEST);
+      }
+      if (!data.otp) {
+        throw new HttpException('OTP not provided', HttpStatus.BAD_REQUEST);
+      }
+
+      const response = await this.authService.verifyAndRegister({
+        email: data.email,
+        otp: data.otp,
+      });
+
+      return response;
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      throw new HttpException(error?.message, HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  // @ApiOperation({ summary: 'Register a user' })
+  // @Post('register')
+
+  // @UseInterceptors(
+  //   FileInterceptor('avatar', {
+  //     storage: memoryStorage(),
+  //   }),
+  // )
+  // async create(
+  //   @Body() data: CreateUserDto,
+
+  //   @UploadedFile() avatar?: Express.Multer.File,
+  // ) {
+  //   try {
+  //     const name = data.name;
+  //     const email = data.email;
+  //     const password = data.password;
+  //     const type = data.type;
+  //     const avatarFile = avatar;
+
+  //     console.log('hello', avatarFile);
+
+  //     if (!name) {
+  //       throw new HttpException('Name not provided', HttpStatus.UNAUTHORIZED);
+  //     }
+
+  //     if (!email) {
+  //       throw new HttpException('Email not provided', HttpStatus.UNAUTHORIZED);
+  //     }
+  //     if (!password) {
+  //       throw new HttpException(
+  //         'Password not provided',
+  //         HttpStatus.UNAUTHORIZED,
+  //       );
+  //     }
+
+  //     const response = await this.authService.register({
+  //       name: name,
+  //       email: email,
+  //       password: password,
+  //       type: type,
+  //       avatar: avatarFile,
+  //     });
+
+  //     return response;
+  //   } catch (error) {
+  //     return {
+  //       success: false,
+  //       message: error.message,
+  //     };
+  //   }
+  // }
+
   // login user
-  @ApiOperation({ summary: 'Login user' })
+
+  @ApiOperation({
+    summary: 'Login user',
+    description: 'Authenticates user with email/password and returns access + refresh tokens.',
+  })
+  @ApiBody({ type: LoginDto })
+  @ApiOkResponse({ description: 'Login successful.' })
+  @ApiUnauthorizedResponse({ description: 'Invalid credentials.' })
   @UseGuards(LocalAuthGuard)
   @Post('login')
   async login(@Req() req: Request, @Res() res: Response) {
@@ -154,14 +259,17 @@ export class AuthController {
     }
   }
 
-  @ApiOperation({ summary: 'Refresh token' })
+  @ApiOperation({
+    summary: 'Refresh token',
+    description: 'Issues a new access token using an existing valid refresh token.',
+  })
   @ApiBearerAuth()
+  @ApiBody({ type: RefreshTokenDto })
+  @ApiOkResponse({ description: 'Token refreshed successfully.' })
+  @ApiUnauthorizedResponse({ description: 'Invalid user token context.' })
   @UseGuards(JwtAuthGuard)
   @Post('refresh-token')
-  async refreshToken(
-    @Req() req: Request,
-    @Body() body: { refresh_token: string },
-  ) {
+  async refreshToken(@Req() req: Request, @Body() body: RefreshTokenDto) {
     try {
       const user_id = req.user.userId;
 
@@ -179,7 +287,13 @@ export class AuthController {
     }
   }
 
+  @ApiOperation({
+    summary: 'Logout user',
+    description: 'Revokes refresh token for current authenticated user.',
+  })
   @ApiBearerAuth()
+  @ApiOkResponse({ description: 'Logged out successfully.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
   @UseGuards(JwtAuthGuard)
   @Post('logout')
   async logout(@Req() req: Request) {
@@ -195,59 +309,36 @@ export class AuthController {
     }
   }
 
-  // google login
-  @ApiOperation({ summary: 'Google login' })
-  @Get('google')
-  @UseGuards(AuthGuard('google'))
-  async googleLogin(): Promise<any> {
-    return HttpStatus.OK;
-  }
-
-  @Get('google/redirect')
-  @UseGuards(AuthGuard('google'))
-  async googleAuthRedirect(@Req() req, @Res() res: Response) {
-    const { user, loginResponse } = req.user;
-
-    // Now, return the JWT tokens and the user info
-    return res.json({
-      message: 'Logged in successfully via Google',
-      authorization: loginResponse.authorization,
-      user: {
-        email: user.email,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        avatar: user.avatar,
-      },
-    });
-  }
-
-  // apple login
-  @Get('apple')
-  @UseGuards(AppleAuthGuard)
-  async appleAuth(@Req() req) {
-    return HttpStatus.OK;
-  }
-
-  @Get('apple/redirect')
-  @UseGuards(AppleAuthGuard)
-  async appleAuthRedirect(@Req() req, @Res() res: Response) {
-    const { user, loginResponse } = req.user;
-
-    return res.json({
-      message: 'Logged in successfully via Apple',
-      authorization: loginResponse.authorization,
-      user: {
-        email: user.email,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        avatar: user.avatar,
-      },
-    });
-  }
-
   // update user
-  @ApiOperation({ summary: 'Update user' })
+  @ApiOperation({
+    summary: 'Update current user profile',
+    description: 'Updates profile fields for authenticated user. Avatar should be sent as multipart file.',
+  })
   @ApiBearerAuth()
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', example: 'John Doe' },
+        country: { type: 'string', example: 'Bangladesh' },
+        state: { type: 'string', example: 'Dhaka' },
+        city: { type: 'string', example: 'Dhaka' },
+        local_government: {
+          type: 'string',
+          example: 'Dhaka North City Corporation',
+        },
+        zip_code: { type: 'string', example: '123456' },
+        phone_number: { type: 'string', example: '+91 9876543210' },
+        address: { type: 'string', example: 'Dhaka, Bangladesh' },
+        gender: { type: 'string', example: 'male' },
+        date_of_birth: { type: 'string', example: '2001-11-14' },
+        avatar: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'User updated successfully.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
   @UseGuards(JwtAuthGuard)
   @Patch('update')
   @UseInterceptors(
@@ -263,10 +354,7 @@ export class AuthController {
     try {
       const user_id = req.user.userId;
       const response = await this.authService.updateUser(user_id, data, avatar);
-      console.log('user_id', user_id);
-      console.log('data', data);
-      console.log('avatar', avatar);
-      console.log('response', response);
+
       return response;
     } catch (error) {
       return {
@@ -278,7 +366,21 @@ export class AuthController {
 
   // --------------change password---------
 
-  @ApiOperation({ summary: 'Forgot password' })
+  @ApiOperation({
+    summary: 'Forgot password',
+    description: 'Sends an OTP/token to email for password reset flow.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['email'],
+      properties: {
+        email: { type: 'string', example: 'user@example.com' },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'Password reset OTP/token sent.' })
+  @ApiBadRequestResponse({ description: 'Email is missing or invalid.' })
   @Post('forgot-password')
   async forgotPassword(@Body() data: { email: string }) {
     try {
@@ -296,7 +398,12 @@ export class AuthController {
   }
 
   // verify email to verify the email
-  @ApiOperation({ summary: 'Verify email' })
+  @ApiOperation({
+    summary: 'Verify email',
+    description: 'Verifies email using OTP/token sent to the user email.',
+  })
+  @ApiOkResponse({ description: 'Email verified successfully.' })
+  @ApiBadRequestResponse({ description: 'Email/token missing or invalid.' })
   @Post('verify-email')
   async verifyEmail(@Body() data: VerifyEmailDto) {
     try {
@@ -321,7 +428,21 @@ export class AuthController {
   }
 
   // resend verification email to verify the email
-  @ApiOperation({ summary: 'Resend verification email' })
+  @ApiOperation({
+    summary: 'Resend verification email',
+    description: 'Resends email verification OTP/token to the provided email.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['email'],
+      properties: {
+        email: { type: 'string', example: 'user@example.com' },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'Verification code resent successfully.' })
+  @ApiBadRequestResponse({ description: 'Email is missing or invalid.' })
   @Post('resend-verification-email')
   async resendVerificationEmail(@Body() data: { email: string }) {
     try {
@@ -339,7 +460,23 @@ export class AuthController {
   }
 
   // reset password if user forget the password
-  @ApiOperation({ summary: 'Reset password' })
+  @ApiOperation({
+    summary: 'Reset password',
+    description: 'Resets password using email + OTP/token + new password.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['email', 'otp', 'new_password'],
+      properties: {
+        email: { type: 'string', example: 'user@example.com' },
+        otp: { type: 'string', example: '123456' },
+        new_password: { type: 'string', example: 'NewPassword123!' },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'Password reset successful.' })
+  @ApiBadRequestResponse({ description: 'Invalid payload or token.' })
   @Post('reset-password')
   async resetPassword(
     @Body() data: { email: string; otp: string; new_password: string },
@@ -374,8 +511,24 @@ export class AuthController {
   }
 
   // change password if user want to change the password
-  @ApiOperation({ summary: 'Change password' })
+  @ApiOperation({
+    summary: 'Change password',
+    description: 'Changes password for currently authenticated user.',
+  })
   @ApiBearerAuth()
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['old_password', 'new_password'],
+      properties: {
+        old_password: { type: 'string', example: 'CurrentPassword123!' },
+        new_password: { type: 'string', example: 'NewPassword123!' },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'Password changed successfully.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
+  @ApiBadRequestResponse({ description: 'Missing or invalid password values.' })
   @UseGuards(JwtAuthGuard)
   @Post('change-password')
   async changePassword(
@@ -420,8 +573,22 @@ export class AuthController {
   // --------------end change password---------
 
   // -------change email address------
-  @ApiOperation({ summary: 'request email change' })
+  @ApiOperation({
+    summary: 'Request email change',
+    description: 'Sends verification token/code for changing account email.',
+  })
   @ApiBearerAuth()
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['email'],
+      properties: {
+        email: { type: 'string', example: 'new.user@example.com' },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'Email change verification token sent.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
   @UseGuards(JwtAuthGuard)
   @Post('request-email-change')
   async requestEmailChange(
@@ -443,8 +610,24 @@ export class AuthController {
     }
   }
 
-  @ApiOperation({ summary: 'Change email address' })
+  @ApiOperation({
+    summary: 'Confirm email change',
+    description: 'Applies email change using verification token/code.',
+  })
   @ApiBearerAuth()
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['email', 'token'],
+      properties: {
+        email: { type: 'string', example: 'new.user@example.com' },
+        token: { type: 'string', example: '123456' },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'Email changed successfully.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
+  @ApiBadRequestResponse({ description: 'Email/token missing or invalid.' })
   @UseGuards(JwtAuthGuard)
   @Post('change-email')
   async changeEmail(
@@ -477,8 +660,13 @@ export class AuthController {
   // -------end change email address------
 
   // --------- 2FA ---------
-  @ApiOperation({ summary: 'Generate 2FA secret' })
+  @ApiOperation({
+    summary: 'Generate 2FA secret',
+    description: 'Returns 2FA setup secret/QR payload for authenticator apps.',
+  })
   @ApiBearerAuth()
+  @ApiOkResponse({ description: '2FA secret generated.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
   @UseGuards(JwtAuthGuard)
   @Post('generate-2fa-secret')
   async generate2FASecret(@Req() req: Request) {
@@ -493,8 +681,22 @@ export class AuthController {
     }
   }
 
-  @ApiOperation({ summary: 'Verify 2FA' })
+  @ApiOperation({
+    summary: 'Verify 2FA code',
+    description: 'Verifies one-time token generated by authenticator app.',
+  })
   @ApiBearerAuth()
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['token'],
+      properties: {
+        token: { type: 'string', example: '123456' },
+      },
+    },
+  })
+  @ApiOkResponse({ description: '2FA token verified.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
   @UseGuards(JwtAuthGuard)
   @Post('verify-2fa')
   async verify2FA(@Req() req: Request, @Body() data: { token: string }) {
@@ -510,8 +712,13 @@ export class AuthController {
     }
   }
 
-  @ApiOperation({ summary: 'Enable 2FA' })
+  @ApiOperation({
+    summary: 'Enable 2FA',
+    description: 'Enables two-factor authentication for current user.',
+  })
   @ApiBearerAuth()
+  @ApiOkResponse({ description: '2FA enabled.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
   @UseGuards(JwtAuthGuard)
   @Post('enable-2fa')
   async enable2FA(@Req() req: Request) {
@@ -526,8 +733,13 @@ export class AuthController {
     }
   }
 
-  @ApiOperation({ summary: 'Disable 2FA' })
+  @ApiOperation({
+    summary: 'Disable 2FA',
+    description: 'Disables two-factor authentication for current user.',
+  })
   @ApiBearerAuth()
+  @ApiOkResponse({ description: '2FA disabled.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
   @UseGuards(JwtAuthGuard)
   @Post('disable-2fa')
   async disable2FA(@Req() req: Request) {
@@ -542,4 +754,110 @@ export class AuthController {
     }
   }
   // --------- end 2FA ---------
+
+  // ======================================== Web only social google & apple login ==============================================
+
+  // google login
+  @ApiOperation({
+    summary: 'Google login (web)',
+    description:
+      'Starts Google OAuth redirect flow. Frontend should navigate browser to this URL, not call it via XHR.',
+  })
+  @ApiOkResponse({ description: 'Redirects to Google OAuth consent screen.' })
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  async googleLogin(): Promise<any> {
+    return HttpStatus.OK;
+  }
+
+  @ApiOperation({
+    summary: 'Google OAuth callback (web)',
+    description:
+      'OAuth callback endpoint. Usually called by Google after consent, returns app auth payload.',
+  })
+  @ApiOkResponse({ description: 'Google login completed and auth payload returned.' })
+  @Get('google/redirect')
+  @UseGuards(AuthGuard('google'))
+  async googleAuthRedirect(@Req() req, @Res() res: Response) {
+    const { user, loginResponse } = req.user;
+
+    // Now, return the JWT tokens and the user info
+    return res.json({
+      message: 'Logged in successfully via Google',
+      authorization: loginResponse.authorization,
+      user: {
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        avatar: user.avatar,
+      },
+    });
+  }
+
+  // apple login
+  @ApiOperation({
+    summary: 'Apple login (web)',
+    description:
+      'Starts Apple OAuth redirect flow. Frontend should navigate browser to this URL, not call it via XHR.',
+  })
+  @ApiOkResponse({ description: 'Redirects to Apple sign-in page.' })
+  @Get('apple')
+  @UseGuards(AppleAuthGuard)
+  async appleAuth(@Req() req) {
+    return HttpStatus.OK;
+  }
+
+  @ApiOperation({
+    summary: 'Apple OAuth callback (web)',
+    description:
+      'OAuth callback endpoint. Usually called by Apple after consent, returns app auth payload.',
+  })
+  @ApiOkResponse({ description: 'Apple login completed and auth payload returned.' })
+  @Get('apple/redirect')
+  @UseGuards(AppleAuthGuard)
+  async appleAuthRedirect(@Req() req, @Res() res: Response) {
+    const { user, loginResponse } = req.user;
+
+    return res.json({
+      message: 'Logged in successfully via Apple',
+      authorization: loginResponse.authorization,
+      user: {
+        email: user.email,
+        first_name: user.first_name,
+        last_name: user.last_name,
+        avatar: user.avatar,
+      },
+    });
+  }
+
+  // ======================================== mobile only google login (Flutter) ==============================================
+  @ApiOperation({
+    summary: 'Google login (mobile)',
+    description:
+      'Accepts Google ID token from mobile client (Flutter/Android/iOS) and returns application auth payload.',
+  })
+  @ApiBody({ type: GoogleMobileDto })
+  @ApiOkResponse({ description: 'Mobile Google login successful.' })
+  @ApiBadRequestResponse({ description: 'Missing or invalid Google token.' })
+  @Post('google/mobile')
+  @UseGuards(AuthGuard('google-mobile'))
+  async googleMobile(@Req() req: Request, @Body() _body: GoogleMobileDto) {
+    // passport-custom strategy returns the final payload as req.user
+    return req.user;
+  }
+
+  @ApiOperation({
+    summary: 'Apple login (mobile)',
+    description:
+      'Accepts Apple identity token from mobile client (Flutter/iOS) and returns application auth payload.',
+  })
+  @ApiBody({ type: AppleMobileDto })
+  @ApiOkResponse({ description: 'Mobile Apple login successful.' })
+  @ApiBadRequestResponse({ description: 'Missing or invalid Apple identity token.' })
+  @Post('apple/mobile')
+  @UseGuards(AuthGuard('apple-mobile'))
+  async appleMobile(@Req() req: Request, @Body() _body: AppleMobileDto) {
+    // passport-custom strategy returns the final payload as req.user
+    return req.user;
+  }
 }

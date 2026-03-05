@@ -12,6 +12,7 @@ import appConfig from './config/app.config';
 import { CustomExceptionFilter } from './common/exception/custom-exception.filter';
 import { SazedStorage } from './common/lib/Disk/SazedStorage';
 import { writeFileSync } from 'fs';
+import { HttpStatusValidationInterceptor } from './common/interceptor/http-status-validation.interceptor';
 
 async function bootstrap() {
   // Auto-detect storage driver: prefer MinIO/AWS S3 when env vars are present.
@@ -141,6 +142,7 @@ async function bootstrap() {
       transform: true,
     }),
   );
+  app.useGlobalInterceptors(new HttpStatusValidationInterceptor());
   app.useGlobalFilters(new CustomExceptionFilter());
 
   // swagger

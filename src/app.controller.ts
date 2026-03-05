@@ -33,7 +33,7 @@ export class AppController {
     };
   }
 
-  @Get('')
+  @Get('status')
   getApiStatus() {
     return {
       ok: true,

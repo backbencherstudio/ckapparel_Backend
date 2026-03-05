@@ -5,29 +5,36 @@ import { IsOptional } from 'class-validator';
 export class UpdateUserDto extends PartialType(CreateUserDto) {
   @IsOptional()
   @ApiProperty({
+    description: 'User name',
+    example: 'John Doe',
+  })
+  name?: string;
+
+  @IsOptional()
+  @ApiProperty({
     description: 'Country',
-    example: 'Nigeria',
+    example: 'Bangladesh',
   })
   country?: string;
 
   @IsOptional()
   @ApiProperty({
     description: 'State',
-    example: 'Lagos',
+    example: 'Dhaka',
   })
   state?: string;
 
   @IsOptional()
   @ApiProperty({
     description: 'City',
-    example: 'Lagos',
+    example: 'Dhaka',
   })
   city?: string;
 
   @IsOptional()
   @ApiProperty({
     description: 'Local government',
-    example: 'Lagos',
+    example: 'Dhaka North City Corporation',
   })
   local_government?: string;
 
@@ -48,7 +55,7 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
   @IsOptional()
   @ApiProperty({
     description: 'Address',
-    example: 'New York, USA',
+    example: 'Dhaka, Bangladesh',
   })
   address?: string;
 
@@ -72,6 +79,4 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
     example: 'http://localhost:4000/api/users/avatar/1234567890',
   })
   avatar?: string;
-
-  
 }

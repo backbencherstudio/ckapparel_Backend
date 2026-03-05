@@ -63,12 +63,21 @@ export default () => ({
 
   auth: {
     google: {
-      app_id: process.env.GOOGLE_APP_ID,
-      app_secret: process.env.GOOGLE_APP_SECRET,
-      callback: process.env.GOOGLE_CALLBACK_URL,
+      app_id:
+        process.env.GOOGLE_APP_ID ||
+        process.env.GOOGLE_CLIENT_ID ||
+        process.env.GOOGLE_ANDROID_APP_ID ||
+        process.env.GOOGLE_IOS_APP_ID,
+      app_secret:
+        process.env.GOOGLE_APP_SECRET ||
+        process.env.GOOGLE_WEB_CLIENT_SECRET ||
+        process.env.GOOGLE_CLIENT_SECRET,
+      callback:
+        process.env.GOOGLE_CALLBACK_URL ||
+        process.env.GOOGLE_WEB_CALLBACK_URL,
     },
     apple: {
-      client_id: process.env.APPLE_CLIENT_ID,
+      client_id: process.env.APPLE_CLIENT_ID || process.env.APPLE_WEB_CLIENT_ID || process.env.APPLE_MOBILE_CLIENT_IDS,
       team_id: process.env.APPLE_TEAM_ID,
       key_id: process.env.APPLE_KEY_ID,
       private_key: process.env.APPLE_PRIVATE_KEY,

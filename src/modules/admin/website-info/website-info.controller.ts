@@ -30,7 +30,7 @@ import { JwtAuthGuard } from '../../../modules/auth/guards/jwt-auth.guard';
 import { Role } from '../../../common/guard/role/role.enum';
 
 @ApiBearerAuth()
-@ApiTags('Website Info')
+@ApiTags('Admin Website Info')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)
 @Controller('admin/website-info')

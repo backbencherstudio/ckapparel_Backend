@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 // Load .env into process.env early so bootstrap config functions (appConfig) see them
 import 'dotenv/config';
-import { Req, ValidationPipe, RequestMethod } from '@nestjs/common';
+import { Logger, ValidationPipe, RequestMethod } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
@@ -13,6 +13,58 @@ import { CustomExceptionFilter } from './common/exception/custom-exception.filte
 import { SazedStorage } from './common/lib/Disk/SazedStorage';
 import { writeFileSync } from 'fs';
 import { HttpStatusValidationInterceptor } from './common/interceptor/http-status-validation.interceptor';
+
+const bootstrapLogger = new Logger('Bootstrap');
+
+function getAppProfileFromEnv() {
+  const appName = process.env.APP_NAME || 'Application';
+  const appEnv = process.env.APP_ENV || process.env.NODE_ENV || 'development';
+  const appUrl = process.env.APP_URL || null;
+  const clientUrl = process.env.CLIENT_APP_URL || null;
+  const appVersion = process.env.APP_VERSION || process.env.npm_package_version || null;
+
+  const developerName =
+    process.env.APP_DEVELOPER_NAME ||
+    process.env.DEVELOPER_NAME ||
+    process.env.AUTHOR_NAME ||
+    null;
+  const developerEmail =
+    process.env.APP_DEVELOPER_EMAIL ||
+    process.env.DEVELOPER_EMAIL ||
+    process.env.AUTHOR_EMAIL ||
+    null;
+  const companyName = process.env.APP_COMPANY || process.env.COMPANY_NAME || null;
+
+  return {
+    appName,
+    appEnv,
+    appUrl,
+    clientUrl,
+    appVersion,
+    developerName,
+    developerEmail,
+    companyName,
+  };
+}
+
+function logProfessionalAppProfile(port: number) {
+  const profile = getAppProfileFromEnv();
+
+  const lines = [
+    `Application : ${profile.appName}`,
+    `Environment : ${profile.appEnv}`,
+    `API URL     : ${profile.appUrl || `http://localhost:${port}`}`,
+    `Client URL  : ${profile.clientUrl || 'not set'}`,
+    `Version     : ${profile.appVersion || 'not set'}`,
+    `Company     : ${profile.companyName || 'not set'}`,
+    `Developer   : ${profile.developerName || 'not set'}`,
+    `Contact     : ${profile.developerEmail || 'not set'}`,
+  ];
+
+  bootstrapLogger.log('----------------------------------------');
+  lines.forEach((line) => bootstrapLogger.log(line));
+  bootstrapLogger.log('----------------------------------------');
+}
 
 async function bootstrap() {
   // Auto-detect storage driver: prefer MinIO/AWS S3 when env vars are present.
@@ -146,18 +198,33 @@ async function bootstrap() {
   app.useGlobalFilters(new CustomExceptionFilter());
 
   // swagger
+  const profile = getAppProfileFromEnv();
+  const swaggerDescriptionParts = [
+    `${profile.appName} API documentation`,
+    profile.companyName ? `Company: ${profile.companyName}` : null,
+    profile.developerName ? `Maintainer: ${profile.developerName}` : null,
+    profile.developerEmail ? `Contact: ${profile.developerEmail}` : null,
+  ].filter(Boolean);
+
   const options = new DocumentBuilder()
-    .setTitle(`${process.env.APP_NAME} api`)
-    .setDescription(`${process.env.APP_NAME} api docs`)
-    .setVersion('1.0')
-    .addTag(`${process.env.APP_NAME}`)
+    .setTitle(`${profile.appName} API`)
+    .setDescription(swaggerDescriptionParts.join(' | '))
+    .setVersion(profile.appVersion || '1.0')
+    .addTag(profile.appName)
     .addBearerAuth()
     .build();
   const document = SwaggerModule.createDocument(app, options);
+
   writeFileSync('./openapi.json', JSON.stringify(document, null, 2));
-  SwaggerModule.setup('api/docs', app, document);
+ SwaggerModule.setup('api/docs', app, document, {
+    swaggerOptions: {
+      persistAuthorization: true,
+    },
+  });
   // end swagger
 
-  await app.listen(process.env.PORT ?? 4000, '0.0.0.0');
+  const port = Number(process.env.PORT ?? 4000);
+  await app.listen(port, '0.0.0.0');
+  logProfessionalAppProfile(port);
 }
 bootstrap();

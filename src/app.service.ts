@@ -9,21 +9,33 @@ export class AppService {
 
   async test(image: Express.Multer.File) {
     try {
-      const fileName = image.originalname;
-      const fileType = image.mimetype;
-      const fileSize = image.size;
-      const fileBuffer = image.buffer;
+      const { originalname: fileName, mimetype, size, buffer: fileBuffer } = image;
 
-      const result = await SazedStorage.put(fileName, fileBuffer);
+      await SazedStorage.put(fileName, fileBuffer);
 
       return {
         success: true,
         message: 'Image uploaded successfully',
-        data: result,
-        url: SazedStorage.url('tony1.jpg'),
+        data: {
+          fileName,
+          mimeType: mimetype,
+          size,
+          driver: SazedStorage.getConfig()?.driver ?? 'unknown',
+        },
+        url: SazedStorage.url(fileName),
       };
     } catch (error) {
-      throw new Error(`Failed to upload image: ${error}`);
+      const driver = SazedStorage.getConfig()?.driver ?? 'unknown';
+      const isNetworkError =
+        (error as any)?.code === 'NetworkingError' ||
+        String(error).includes('NetworkingError');
+
+      throw new Error(
+        isNetworkError
+          ? `Storage connection failed: the "${driver}" driver is unreachable. ` +
+            `Verify your storage service is running and your environment variables are correct.`
+          : `Failed to upload image: ${(error as Error)?.message ?? error}`,
+      );
     }
   }
 }

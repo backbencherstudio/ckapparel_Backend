@@ -33,13 +33,6 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
 
   @IsOptional()
   @ApiProperty({
-    description: 'Local government',
-    example: 'Dhaka North City Corporation',
-  })
-  local_government?: string;
-
-  @IsOptional()
-  @ApiProperty({
     description: 'Zip code',
     example: '123456',
   })

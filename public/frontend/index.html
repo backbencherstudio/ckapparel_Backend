@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Acting Academy App</title>
+    <!-- Use the Inter font from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="style/style.css" />
+
+    <!-- Load Socket.IO client library -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <!-- LiveKit client (UMD) -->
+    <script src="https://unpkg.com/livekit-client/dist/livekit-client.umd.js"></script>
+  </head>
+  <body>
+    <!-- Main Container -->
+    <div id="main-container" class="main-container">
+      <!-- Login/Register View (Initially visible) -->
+      <div id="auth-view" class="auth-view">
+        <div class="form-container">
+          <!-- Login Form -->
+          <div id="login-form" class="form">
+            <h2>Login</h2>
+            <input type="email" id="email" placeholder="Email" required />
+            <input
+              type="password"
+              id="password"
+              placeholder="Password"
+              required
+            />
+            <button id="login-btn">Login</button>
+            <p>
+              Don't have an account?
+              <span id="show-register">Register here</span>
+            </p>
+          </div>
+
+          <!-- Register Form (Initially hidden) -->
+          <div id="register-form" class="form" style="display: none">
+            <h2>Register</h2>
+            <input
+              type="email"
+              id="register-email"
+              placeholder="Email"
+              required
+            />
+            <input
+              type="password"
+              id="register-password"
+              placeholder="Password"
+              required
+            />
+            <button id="register-btn">Register</button>
+            <p>
+              Already have an account? <span id="show-login">Login here</span>
+            </p>
+          </div>
+
+          <!-- Message Box -->
+          <div id="message-box" class="message-box"></div>
+        </div>
+      </div>
+
+      <!-- Chat View (Initially hidden) -->
+      <div id="chat-view" class="chat-view">
+        <div class="chat-view-content">
+          <!-- Sidebar for Recent Chats -->
+          <div id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+              <h2>Chats</h2>
+              <div class="icon-buttons">
+                <button title="New Chat" id="new-chat-btn">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M8 10h8M8 14h5m6-8v6m-3-3h6M4 6a2 2 0 0 1 2-2h7l7 7v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6z"
+                    />
+                  </svg>
+                </button>
+                <button title="New Group Chat" id="new-group-btn">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="sidebar-search">
+              <div class="input-wrapper">
+                <input type="text" placeholder="Search conversations or users..." />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M21 21l-4.35-4.35M10.5 18a7.5 7.5 0 100-15 7.5 7.5 0 000 15z"
+                  />
+                </svg>
+              </div>
+              <div class="suggestion-box"></div>
+              <!-- Suggestions appear here -->
+            </div>
+
+            <ul id="conversation-list" class="conversation-list">
+              <!-- Conversations will be populated here -->
+            </ul>
+          </div>
+
+          <!-- Main Chat Area -->
+          <div id="chat-area" class="chat-area">
+            <!-- Mobile sidebar toggle button -->
+            <button id="sidebar-toggle" class="sidebar-toggle">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            </button>
+            <!-- Chat Header -->
+            <div class="chat-header">
+              <div class="profile-info">
+                <img
+                  id="chat-avatar"
+                  src="https://placehold.co/48x48/FBCFE8/white?text=C"
+                  alt="Avatar"
+                />
+                <div>
+                  <h3 id="chat-title">Select a Chat</h3>
+                  <p id="chat-subtitle">
+                    <span id="user-id-display"></span>
+                  </p>
+                </div>
+              </div>
+              <!-- Call and menu icons -->
+              <div class="icon-buttons">
+                <button title="Audio Call" id="audio-call-btn">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M2.25 4.5A2.25 2.25 0 014.5 2.25h2.1A2.25 2.25 0 018.79 3.8l.71 2.49a2.25 2.25 0 01-.56 2.22l-1.1 1.1a13.5 13.5 0 006.45 6.45l1.1-1.1a2.25 2.25 0 012.22-.56l2.49.71a2.25 2.25 0 011.55 2.19v2.1A2.25 2.25 0 0119.5 21.75h-.75C9.92 21.75 2.25 14.08 2.25 5.25V4.5z"
+                    />
+                  </svg>
+                </button>
+                <button title="Video Call" id="video-call-btn">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M15.75 7.5v9a2.25 2.25 0 01-2.25 2.25h-9A2.25 2.25 0 012.25 16.5v-9A2.25 2.25 0 014.5 5.25h9a2.25 2.25 0 012.25 2.25z"
+                    />
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M15.75 10.5l4.5-2.25v7.5l-4.5-2.25v-3z"
+                    />
+                  </svg>
+                </button>
+                <button title="Menu" id="menu-btn">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <!-- Chat Messages Area -->
+            <div id="messages" class="chat-messages">
+              <!-- Messages will be populated here by JavaScript -->
+            </div>
+
+            <!-- Typing Indicator -->
+            <div
+              id="typing-indicator"
+              class="typing-indicator"
+              style="display: none"
+            >
+              <em>Someone is typing...</em>
+            </div>
+
+            
+            <!-- Message Input Area -->
+            <div class="message-input-area">
+              <div id="pending-attachments" class="pending-attachments hidden"></div>
+              <div class="input-group">
+                <button title="Attach file" id="attach-btn">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M21.44 11.05l-8.49 8.49a5 5 0 01-7.07-7.07l9.2-9.19a3.5 3.5 0 114.95 4.95l-9.2 9.19a2 2 0 11-2.83-2.83l8.49-8.49"
+                    />
+                  </svg>
+                </button>
+                <input
+                  type="file"
+                  id="attachment-input"
+                  accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar"
+                  multiple
+                  hidden
+                />
+                <input
+                  type="text"
+                  id="message-text"
+                  placeholder="Type a message..."
+                />
+                <button id="send-message-btn">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Call Overlay -->
+    <div id="call-overlay" class="call-overlay hidden">
+      <div class="call-inner">
+        <div class="call-videos">
+          <video id="local-video" autoplay muted playsinline></video>
+          <div id="remote-videos" class="remote-videos"></div>
+        </div>
+        <div class="call-controls">
+          <button id="toggle-mic-btn" class="call-btn">Mute</button>
+          <button id="toggle-cam-btn" class="call-btn">Camera Off</button>
+          <button id="hangup-btn" class="call-btn hangup">Hang Up</button>
+        </div>
+        <div id="call-status" class="call-status">Connecting...</div>
+      </div>
+    </div>
+
+    <div id="incoming-call-banner" class="incoming-call-banner hidden">
+      <div class="incoming-call-title">Incoming Call</div>
+      <div id="incoming-call-text" class="incoming-call-text">
+        Someone is calling you
+      </div>
+      <div class="incoming-call-actions">
+        <button id="incoming-call-reject" class="incoming-call-btn reject">
+          Decline
+        </button>
+        <button id="incoming-call-accept" class="incoming-call-btn accept">
+          Join
+        </button>
+      </div>
+    </div>
+
+    <div id="action-modal" class="action-modal hidden" role="dialog" aria-modal="true">
+      <div class="action-modal-card">
+        <div class="action-modal-header">
+          <h3 id="action-modal-title">Action</h3>
+          <button id="action-modal-close" class="action-modal-close" type="button" aria-label="Close">x</button>
+        </div>
+
+        <div id="action-modal-field-wrap" class="action-modal-field-wrap hidden">
+          <label for="action-modal-field">Group title</label>
+          <input id="action-modal-field" type="text" placeholder="Enter group title" />
+        </div>
+
+        <div class="action-modal-search">
+          <input id="action-modal-search" type="text" placeholder="Search users by name, username, or email" />
+        </div>
+
+        <div id="action-modal-selected" class="action-modal-selected"></div>
+        <div id="action-modal-results" class="action-modal-results"></div>
+        <div id="action-modal-error" class="action-modal-error hidden"></div>
+
+        <div class="action-modal-footer">
+          <button id="action-modal-cancel" type="button" class="secondary">Cancel</button>
+          <button id="action-modal-submit" type="button" class="primary">Continue</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="group-info-modal" class="group-info-modal hidden" role="dialog" aria-modal="true">
+      <div class="group-info-card">
+        <div class="group-info-header">
+          <div>
+            <h3 id="group-info-title">Group Info</h3>
+            <p id="group-info-subtitle">Manage members and roles</p>
+          </div>
+          <button id="group-info-close" class="group-info-close" type="button" aria-label="Close">x</button>
+        </div>
+
+        <div id="group-info-toolbar" class="group-info-toolbar">
+          <button id="group-info-add-member" type="button" class="primary">Add member</button>
+        </div>
+
+        <div id="group-info-error" class="group-info-error hidden"></div>
+        <div id="group-info-list" class="group-info-list"></div>
+      </div>
+    </div>
+
+    <script src="js/script.js"></script>
+  </body>
+</html>

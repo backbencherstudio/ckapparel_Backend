@@ -16,7 +16,7 @@ import { Roles } from '../../../common/guard/role/roles.decorator';
 import { Request } from 'express';
 
 @ApiBearerAuth()
-@ApiTags('Payment transaction')
+@ApiTags('Admin Payment transaction')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)
 @Controller('admin/payment-transaction')

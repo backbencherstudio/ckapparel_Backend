@@ -29,7 +29,7 @@ import { Role } from '../../../common/guard/role/role.enum';
 import { RolesGuard } from '../../../common/guard/role/roles.guard';
 
 @ApiBearerAuth()
-@ApiTags('Contact')
+@ApiTags('Admin Contact')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)
 @Controller('admin/contact')

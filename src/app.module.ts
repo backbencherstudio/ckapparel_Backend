@@ -18,10 +18,10 @@ import { AbilityModule } from './ability/ability.module';
 import { MailModule } from './mail/mail.module';
 import { ApplicationModule } from './modules/application/application.module';
 import { AdminModule } from './modules/admin/admin.module';
-import { ChatModule } from './modules/chat/chat.module';
 import { PaymentModule } from './modules/payment/payment.module';
 import { SubscriptionModule } from './modules/subscription/subscription.module';
 import { NotificationModule } from './modules/application/notification/notification.module';
+import { ChatModule } from './modules/chat/chat.module';
 
 @Module({
   imports: [
@@ -75,10 +75,10 @@ import { NotificationModule } from './modules/application/notification/notificat
     MailModule,
     ApplicationModule,
     AdminModule,
-    ChatModule,
     PaymentModule,
     SubscriptionModule,
     NotificationModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [

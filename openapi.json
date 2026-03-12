@@ -1,29 +1,31 @@
 {
   "openapi": "3.0.0",
   "paths": {
-    "/": {
-      "get": {
-        "operationId": "AppController_root",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "App"
-        ]
-      }
-    },
     "/api/status": {
       "get": {
+        "description": "Returns basic runtime information about the running server.",
         "operationId": "AppController_getApiStatus",
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Server is up and running.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "ok": true,
+                    "message": "Server is running",
+                    "appName": "Boilerplate App",
+                    "version": "0.0.1",
+                    "env": "development",
+                    "uptimeSec": 3600
+                  }
+                }
+              }
+            }
           }
         },
+        "summary": "Health check",
         "tags": [
           "App"
         ]
@@ -31,13 +33,15 @@
     },
     "/api/test-chunk-stream": {
       "get": {
+        "description": "Streams 10 text chunks using chunked transfer encoding. For development/testing only.",
         "operationId": "AppController_chunkStream",
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "A series of newline-delimited text chunks streamed to the client."
           }
         },
+        "summary": "[Test] Chunked streaming",
         "tags": [
           "App"
         ]
@@ -45,13 +49,15 @@
     },
     "/api/test-file-stream": {
       "get": {
+        "description": "Streams package.json as a downloadable file. For development/testing only.",
         "operationId": "AppController_testFileStream",
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Returns package.json as a file attachment."
           }
         },
+        "summary": "[Test] File download stream",
         "tags": [
           "App"
         ]
@@ -59,13 +65,44 @@
     },
     "/api/test-file-upload": {
       "post": {
+        "description": "Accepts an image file upload and stores it. For development/testing only.",
         "operationId": "AppController_test",
         "parameters": [],
-        "responses": {
-          "201": {
-            "description": ""
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "image": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "Image file to upload"
+                  }
+                }
+              }
+            }
           }
         },
+        "responses": {
+          "200": {
+            "description": "File uploaded successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "success": true,
+                    "message": "Image uploaded successfully",
+                    "data": {},
+                    "url": "https://cdn.example.com/file.jpg"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "[Test] File upload",
         "tags": [
           "App"
         ]
@@ -302,10 +339,6 @@
                   "city": {
                     "type": "string",
                     "example": "Dhaka"
-                  },
-                  "local_government": {
-                    "type": "string",
-                    "example": "Dhaka North City Corporation"
                   },
                   "zip_code": {
                     "type": "string",
@@ -559,215 +592,6 @@
         ]
       }
     },
-    "/api/auth/request-email-change": {
-      "post": {
-        "description": "Sends verification token/code for changing account email.",
-        "operationId": "AuthController_requestEmailChange",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "email"
-                ],
-                "properties": {
-                  "email": {
-                    "type": "string",
-                    "example": "new.user@example.com"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Email change verification token sent."
-          },
-          "401": {
-            "description": "Missing or invalid access token."
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Request email change",
-        "tags": [
-          "auth"
-        ]
-      }
-    },
-    "/api/auth/change-email": {
-      "post": {
-        "description": "Applies email change using verification token/code.",
-        "operationId": "AuthController_changeEmail",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "email",
-                  "token"
-                ],
-                "properties": {
-                  "email": {
-                    "type": "string",
-                    "example": "new.user@example.com"
-                  },
-                  "token": {
-                    "type": "string",
-                    "example": "123456"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Email changed successfully."
-          },
-          "400": {
-            "description": "Email/token missing or invalid."
-          },
-          "401": {
-            "description": "Missing or invalid access token."
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Confirm email change",
-        "tags": [
-          "auth"
-        ]
-      }
-    },
-    "/api/auth/generate-2fa-secret": {
-      "post": {
-        "description": "Returns 2FA setup secret/QR payload for authenticator apps.",
-        "operationId": "AuthController_generate2FASecret",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "2FA secret generated."
-          },
-          "401": {
-            "description": "Missing or invalid access token."
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Generate 2FA secret",
-        "tags": [
-          "auth"
-        ]
-      }
-    },
-    "/api/auth/verify-2fa": {
-      "post": {
-        "description": "Verifies one-time token generated by authenticator app.",
-        "operationId": "AuthController_verify2FA",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "required": [
-                  "token"
-                ],
-                "properties": {
-                  "token": {
-                    "type": "string",
-                    "example": "123456"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "2FA token verified."
-          },
-          "401": {
-            "description": "Missing or invalid access token."
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Verify 2FA code",
-        "tags": [
-          "auth"
-        ]
-      }
-    },
-    "/api/auth/enable-2fa": {
-      "post": {
-        "description": "Enables two-factor authentication for current user.",
-        "operationId": "AuthController_enable2FA",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "2FA enabled."
-          },
-          "401": {
-            "description": "Missing or invalid access token."
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Enable 2FA",
-        "tags": [
-          "auth"
-        ]
-      }
-    },
-    "/api/auth/disable-2fa": {
-      "post": {
-        "description": "Disables two-factor authentication for current user.",
-        "operationId": "AuthController_disable2FA",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "2FA disabled."
-          },
-          "401": {
-            "description": "Missing or invalid access token."
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Disable 2FA",
-        "tags": [
-          "auth"
-        ]
-      }
-    },
     "/api/auth/google": {
       "get": {
         "description": "Starts Google OAuth redirect flow. Frontend should navigate browser to this URL, not call it via XHR.",
@@ -892,11 +716,15 @@
     },
     "/api/notifications": {
       "get": {
+        "description": "Returns all notifications for the authenticated user in descending order.",
         "operationId": "NotificationController_getAllNotifications",
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Notifications fetched successfully."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
           }
         },
         "security": [
@@ -904,7 +732,7 @@
             "bearer": []
           }
         ],
-        "summary": "Get all notifications for the current user",
+        "summary": "Get current user notifications",
         "tags": [
           "Notification"
         ]
@@ -912,11 +740,15 @@
     },
     "/api/notifications/read-all": {
       "patch": {
+        "description": "Marks all unread notifications of the authenticated user as read.",
         "operationId": "NotificationController_markAllAsRead",
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "All notifications marked as read (or no unread notifications)."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
           }
         },
         "security": [
@@ -932,20 +764,29 @@
     },
     "/api/notifications/{id}/read": {
       "patch": {
+        "description": "Marks a specific notification as read for the authenticated user.",
         "operationId": "NotificationController_markAsRead",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
+            "description": "Notification unique identifier.",
             "schema": {
+              "example": "cm8q1n1f50000kq3g7d9h2zab",
               "type": "string"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Notification marked as read successfully."
+          },
+          "400": {
+            "description": "Notification not found or unauthorized access."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
           }
         },
         "security": [
@@ -953,7 +794,7 @@
             "bearer": []
           }
         ],
-        "summary": "Mark a specific notification as read",
+        "summary": "Mark notification as read",
         "tags": [
           "Notification"
         ]
@@ -961,20 +802,29 @@
     },
     "/api/notifications/{id}/unread": {
       "patch": {
+        "description": "Marks a specific notification as unread for the authenticated user.",
         "operationId": "NotificationController_markAsUnread",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
+            "description": "Notification unique identifier.",
             "schema": {
+              "example": "cm8q1n1f50000kq3g7d9h2zab",
               "type": "string"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Notification marked as unread successfully."
+          },
+          "400": {
+            "description": "Notification not found or unauthorized access."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
           }
         },
         "security": [
@@ -982,7 +832,7 @@
             "bearer": []
           }
         ],
-        "summary": "Mark a specific notification as unread",
+        "summary": "Mark notification as unread",
         "tags": [
           "Notification"
         ]
@@ -990,20 +840,29 @@
     },
     "/api/notifications/{id}/delete": {
       "delete": {
+        "description": "Deletes a specific notification belonging to the authenticated user.",
         "operationId": "NotificationController_deleteNotification",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
+            "description": "Notification unique identifier.",
             "schema": {
+              "example": "cm8q1n1f50000kq3g7d9h2zab",
               "type": "string"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Notification deleted successfully."
+          },
+          "400": {
+            "description": "Notification not found or unauthorized access."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
           }
         },
         "security": [
@@ -1011,7 +870,7 @@
             "bearer": []
           }
         ],
-        "summary": "Delete a specific notification",
+        "summary": "Delete notification",
         "tags": [
           "Notification"
         ]
@@ -1019,6 +878,7 @@
     },
     "/api/contact": {
       "post": {
+        "description": "Creates a contact/support request from public application users.",
         "operationId": "ContactController_create",
         "parameters": [],
         "requestBody": {
@@ -1033,10 +893,30 @@
         },
         "responses": {
           "201": {
-            "description": ""
+            "description": "Contact request submitted successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Submitted successfully"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed for contact request payload."
           }
         },
-        "summary": "Create contact",
+        "summary": "Submit contact request",
         "tags": [
           "Contact"
         ]
@@ -1044,14 +924,48 @@
     },
     "/api/faq": {
       "get": {
+        "description": "Returns all FAQ items ordered by configured sort order.",
         "operationId": "FaqController_findAll",
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "FAQ list fetched successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "example": "cm8q1n1f50000kq3g7d9h2zab"
+                          },
+                          "question": {
+                            "type": "string",
+                            "example": "How do I start a free trial?"
+                          },
+                          "answer": {
+                            "type": "string",
+                            "example": "Go to the subscription page and click Start Trial to activate your trial plan."
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         },
-        "summary": "Get all faq",
+        "summary": "Get all FAQs",
         "tags": [
           "Faq"
         ]
@@ -1059,23 +973,59 @@
     },
     "/api/faq/{id}": {
       "get": {
+        "description": "Returns one FAQ item by its unique identifier.",
         "operationId": "FaqController_findOne",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
+            "description": "FAQ unique identifier.",
             "schema": {
+              "example": "cm8q1n1f50000kq3g7d9h2zab",
               "type": "string"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "FAQ fetched successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "example": "cm8q1n1f50000kq3g7d9h2zab"
+                        },
+                        "question": {
+                          "type": "string",
+                          "example": "How do I start a free trial?"
+                        },
+                        "answer": {
+                          "type": "string",
+                          "example": "Go to the subscription page and click Start Trial to activate your trial plan."
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid FAQ id format."
           }
         },
-        "summary": "Get faq by id",
+        "summary": "Get FAQ by id",
         "tags": [
           "Faq"
         ]
@@ -1083,6 +1033,7 @@
     },
     "/api/admin/faq": {
       "post": {
+        "description": "Creates a single FAQ entry.",
         "operationId": "FaqController_create",
         "parameters": [],
         "requestBody": {
@@ -1096,8 +1047,14 @@
           }
         },
         "responses": {
-          "201": {
-            "description": ""
+          "200": {
+            "description": "FAQ created successfully."
+          },
+          "400": {
+            "description": "Invalid FAQ payload."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1105,17 +1062,21 @@
             "bearer": []
           }
         ],
-        "summary": "Create faq",
+        "summary": "Create FAQ",
         "tags": [
-          "Faq"
+          "Admin Faq"
         ]
       },
       "get": {
+        "description": "Returns all FAQ entries.",
         "operationId": "FaqController_findAll",
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "FAQs fetched successfully."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1123,14 +1084,15 @@
             "bearer": []
           }
         ],
-        "summary": "Read all faqs",
+        "summary": "Get all FAQs",
         "tags": [
-          "Faq"
+          "Admin Faq"
         ]
       }
     },
     "/api/admin/faq/batch-create": {
       "post": {
+        "description": "Creates new FAQs and updates existing FAQs in a single request.",
         "operationId": "FaqController_batchCreate",
         "parameters": [],
         "requestBody": {
@@ -1144,8 +1106,14 @@
           }
         },
         "responses": {
-          "201": {
-            "description": ""
+          "200": {
+            "description": "Batch FAQ operation completed successfully."
+          },
+          "400": {
+            "description": "Invalid batch FAQ payload."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1153,28 +1121,37 @@
             "bearer": []
           }
         ],
-        "summary": "Batch create or update faqs",
+        "summary": "Batch create or update FAQs",
         "tags": [
-          "Faq"
+          "Admin Faq"
         ]
       }
     },
     "/api/admin/faq/{id}": {
       "get": {
+        "description": "Returns a single FAQ by its id.",
         "operationId": "FaqController_findOne",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
+            "description": "FAQ id.",
             "schema": {
+              "example": "cm8q1n1f50000kq3g7d9h2zab",
               "type": "string"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "FAQ fetched successfully."
+          },
+          "400": {
+            "description": "Invalid FAQ id."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1182,19 +1159,22 @@
             "bearer": []
           }
         ],
-        "summary": "Read one faq",
+        "summary": "Get FAQ by id",
         "tags": [
-          "Faq"
+          "Admin Faq"
         ]
       },
       "patch": {
+        "description": "Updates an existing FAQ by id.",
         "operationId": "FaqController_update",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
+            "description": "FAQ id.",
             "schema": {
+              "example": "cm8q1n1f50000kq3g7d9h2zab",
               "type": "string"
             }
           }
@@ -1211,7 +1191,13 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "FAQ updated successfully."
+          },
+          "400": {
+            "description": "Invalid FAQ id or payload."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1219,26 +1205,35 @@
             "bearer": []
           }
         ],
-        "summary": "Update faq",
+        "summary": "Update FAQ",
         "tags": [
-          "Faq"
+          "Admin Faq"
         ]
       },
       "delete": {
+        "description": "Deletes an FAQ by id.",
         "operationId": "FaqController_remove",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
+            "description": "FAQ id.",
             "schema": {
+              "example": "cm8q1n1f50000kq3g7d9h2zab",
               "type": "string"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "FAQ deleted successfully."
+          },
+          "400": {
+            "description": "Invalid FAQ id."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1246,14 +1241,15 @@
             "bearer": []
           }
         ],
-        "summary": "Delete faq",
+        "summary": "Delete FAQ",
         "tags": [
-          "Faq"
+          "Admin Faq"
         ]
       }
     },
     "/api/admin/contact": {
       "post": {
+        "description": "Creates a new contact submission from admin panel.",
         "operationId": "ContactController_create",
         "parameters": [],
         "requestBody": {
@@ -1267,8 +1263,14 @@
           }
         },
         "responses": {
-          "201": {
-            "description": ""
+          "200": {
+            "description": "Contact created successfully."
+          },
+          "400": {
+            "description": "Invalid contact payload."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1278,15 +1280,39 @@
         ],
         "summary": "Create contact",
         "tags": [
-          "Contact"
+          "Admin Contact"
         ]
       },
       "get": {
+        "description": "Returns contact submissions with optional search and status filtering.",
         "operationId": "ContactController_findAll",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by status value.",
+            "schema": {
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Search text.",
+            "schema": {
+              "example": "john"
+            }
+          }
+        ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Contacts fetched successfully."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1294,28 +1320,37 @@
             "bearer": []
           }
         ],
-        "summary": "Read all contacts",
+        "summary": "Get all contacts",
         "tags": [
-          "Contact"
+          "Admin Contact"
         ]
       }
     },
     "/api/admin/contact/{id}": {
       "get": {
+        "description": "Returns a single contact submission by id.",
         "operationId": "ContactController_findOne",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
+            "description": "Contact id.",
             "schema": {
+              "example": "cm8q1n1f50000kq3g7d9h2zab",
               "type": "string"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Contact fetched successfully."
+          },
+          "400": {
+            "description": "Invalid contact id."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1323,19 +1358,22 @@
             "bearer": []
           }
         ],
-        "summary": "Read one contact",
+        "summary": "Get contact by id",
         "tags": [
-          "Contact"
+          "Admin Contact"
         ]
       },
       "patch": {
+        "description": "Updates an existing contact submission by id.",
         "operationId": "ContactController_update",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
+            "description": "Contact id.",
             "schema": {
+              "example": "cm8q1n1f50000kq3g7d9h2zab",
               "type": "string"
             }
           }
@@ -1352,7 +1390,13 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "Contact updated successfully."
+          },
+          "400": {
+            "description": "Invalid contact id or payload."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1362,24 +1406,33 @@
         ],
         "summary": "Update contact",
         "tags": [
-          "Contact"
+          "Admin Contact"
         ]
       },
       "delete": {
+        "description": "Deletes a contact submission by id.",
         "operationId": "ContactController_remove",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
+            "description": "Contact id.",
             "schema": {
+              "example": "cm8q1n1f50000kq3g7d9h2zab",
               "type": "string"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Contact deleted successfully."
+          },
+          "400": {
+            "description": "Invalid contact id."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1389,27 +1442,67 @@
         ],
         "summary": "Delete contact",
         "tags": [
-          "Contact"
+          "Admin Contact"
         ]
       }
     },
     "/api/admin/website-info": {
       "post": {
+        "description": "Creates or updates website information and optionally uploads logo/favicon files.",
         "operationId": "WebsiteInfoController_create",
         "parameters": [],
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
-                "$ref": "#/components/schemas/CreateWebsiteInfoDto"
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "example": "My Website"
+                  },
+                  "phone_number": {
+                    "type": "string",
+                    "example": "081234567890"
+                  },
+                  "email": {
+                    "type": "string",
+                    "example": "mywebsite@gmail.com"
+                  },
+                  "address": {
+                    "type": "string",
+                    "example": "Jl. Raya No. 123, Jakarta, Indonesia"
+                  },
+                  "copyright": {
+                    "type": "string",
+                    "example": "© 2026 My Website. All rights reserved."
+                  },
+                  "cancellation_policy": {
+                    "type": "string"
+                  },
+                  "logo": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "favicon": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
               }
             }
           }
         },
         "responses": {
-          "201": {
-            "description": ""
+          "200": {
+            "description": "Website info saved successfully."
+          },
+          "400": {
+            "description": "Invalid website info payload."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1417,17 +1510,21 @@
             "bearer": []
           }
         ],
-        "summary": "Update website info",
+        "summary": "Create or update website info",
         "tags": [
-          "Website Info"
+          "Admin Website Info"
         ]
       },
       "get": {
+        "description": "Returns current website information settings.",
         "operationId": "WebsiteInfoController_findAll",
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Website info fetched successfully."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1437,17 +1534,21 @@
         ],
         "summary": "Get website info",
         "tags": [
-          "Website Info"
+          "Admin Website Info"
         ]
       }
     },
     "/api/admin/payment-transaction": {
       "get": {
+        "description": "Returns all payment transactions visible to authenticated admin user.",
         "operationId": "PaymentTransactionController_findAll",
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Payment transactions fetched successfully."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1455,28 +1556,37 @@
             "bearer": []
           }
         ],
-        "summary": "Get all packages",
+        "summary": "Get all payment transactions",
         "tags": [
-          "Payment transaction"
+          "Admin Payment transaction"
         ]
       }
     },
     "/api/admin/payment-transaction/{id}": {
       "get": {
+        "description": "Returns one payment transaction by id.",
         "operationId": "PaymentTransactionController_findOne",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
+            "description": "Payment transaction id.",
             "schema": {
+              "example": "cm8q1n1f50000kq3g7d9h2zab",
               "type": "string"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Payment transaction fetched successfully."
+          },
+          "400": {
+            "description": "Invalid payment transaction id."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1484,26 +1594,35 @@
             "bearer": []
           }
         ],
-        "summary": "Get one package",
+        "summary": "Get payment transaction by id",
         "tags": [
-          "Payment transaction"
+          "Admin Payment transaction"
         ]
       },
       "delete": {
+        "description": "Deletes a payment transaction by id.",
         "operationId": "PaymentTransactionController_remove",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
+            "description": "Payment transaction id.",
             "schema": {
+              "example": "cm8q1n1f50000kq3g7d9h2zab",
               "type": "string"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Payment transaction deleted successfully."
+          },
+          "400": {
+            "description": "Invalid payment transaction id."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1511,13 +1630,15 @@
             "bearer": []
           }
         ],
+        "summary": "Delete payment transaction",
         "tags": [
-          "Payment transaction"
+          "Admin Payment transaction"
         ]
       }
     },
     "/api/admin/user": {
       "post": {
+        "description": "Creates a user from admin panel.",
         "operationId": "UserController_create",
         "parameters": [],
         "requestBody": {
@@ -1531,8 +1652,14 @@
           }
         },
         "responses": {
-          "default": {
-            "description": "Create a user"
+          "200": {
+            "description": "User created successfully."
+          },
+          "400": {
+            "description": "Invalid user payload."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1540,16 +1667,49 @@
             "bearer": []
           }
         ],
+        "summary": "Create admin-managed user",
         "tags": [
           "Admin User Management"
         ]
       },
       "get": {
+        "description": "Returns users with optional search/type/approval filtering.",
         "operationId": "UserController_findAll",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "approved",
+            "required": false,
+            "in": "query",
+            "description": "Approval status filter.",
+            "schema": {
+              "example": "1"
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "description": "User type filter.",
+            "schema": {
+              "example": "coach"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Search text.",
+            "schema": {
+              "example": "john"
+            }
+          }
+        ],
         "responses": {
-          "default": {
-            "description": "Get all users"
+          "200": {
+            "description": "Users fetched successfully."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1557,6 +1717,7 @@
             "bearer": []
           }
         ],
+        "summary": "Get all users",
         "tags": [
           "Admin User Management"
         ]
@@ -1564,20 +1725,29 @@
     },
     "/api/admin/user/{id}/approve": {
       "post": {
+        "description": "Approves a pending user by id.",
         "operationId": "UserController_approve",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
+            "description": "User id.",
             "schema": {
+              "example": "cm8q1n1f50000kq3g7d9h2zab",
               "type": "string"
             }
           }
         ],
         "responses": {
-          "default": {
-            "description": "Approve a user"
+          "200": {
+            "description": "User approved successfully."
+          },
+          "400": {
+            "description": "Invalid user id."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1585,6 +1755,7 @@
             "bearer": []
           }
         ],
+        "summary": "Approve user",
         "tags": [
           "Admin User Management"
         ]
@@ -1592,20 +1763,29 @@
     },
     "/api/admin/user/{id}/reject": {
       "post": {
+        "description": "Rejects a pending user by id.",
         "operationId": "UserController_reject",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
+            "description": "User id.",
             "schema": {
+              "example": "cm8q1n1f50000kq3g7d9h2zab",
               "type": "string"
             }
           }
         ],
         "responses": {
-          "default": {
-            "description": "Reject a user"
+          "200": {
+            "description": "User rejected successfully."
+          },
+          "400": {
+            "description": "Invalid user id."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1613,6 +1793,7 @@
             "bearer": []
           }
         ],
+        "summary": "Reject user",
         "tags": [
           "Admin User Management"
         ]
@@ -1620,20 +1801,29 @@
     },
     "/api/admin/user/{id}": {
       "get": {
+        "description": "Returns details of one user by id.",
         "operationId": "UserController_findOne",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
+            "description": "User id.",
             "schema": {
+              "example": "cm8q1n1f50000kq3g7d9h2zab",
               "type": "string"
             }
           }
         ],
         "responses": {
-          "default": {
-            "description": "Get a user by id"
+          "200": {
+            "description": "User fetched successfully."
+          },
+          "400": {
+            "description": "Invalid user id."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1641,18 +1831,22 @@
             "bearer": []
           }
         ],
+        "summary": "Get user by id",
         "tags": [
           "Admin User Management"
         ]
       },
       "patch": {
+        "description": "Updates an existing user by id.",
         "operationId": "UserController_update",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
+            "description": "User id.",
             "schema": {
+              "example": "cm8q1n1f50000kq3g7d9h2zab",
               "type": "string"
             }
           }
@@ -1669,7 +1863,13 @@
         },
         "responses": {
           "200": {
-            "description": ""
+            "description": "User updated successfully."
+          },
+          "400": {
+            "description": "Invalid user id or payload."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1677,25 +1877,35 @@
             "bearer": []
           }
         ],
+        "summary": "Update user",
         "tags": [
           "Admin User Management"
         ]
       },
       "delete": {
+        "description": "Deletes a user by id.",
         "operationId": "UserController_remove",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
+            "description": "User id.",
             "schema": {
+              "example": "cm8q1n1f50000kq3g7d9h2zab",
               "type": "string"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "User deleted successfully."
+          },
+          "400": {
+            "description": "Invalid user id."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1703,6 +1913,7 @@
             "bearer": []
           }
         ],
+        "summary": "Delete user",
         "tags": [
           "Admin User Management"
         ]
@@ -1710,11 +1921,15 @@
     },
     "/api/admin/notification": {
       "get": {
+        "description": "Returns notifications for the currently authenticated admin user.",
         "operationId": "NotificationController_findAll",
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Notifications fetched successfully."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1722,17 +1937,21 @@
             "bearer": []
           }
         ],
-        "summary": "Get all notifications",
+        "summary": "Get all admin notifications",
         "tags": [
-          "Notification"
+          "Admin Notification"
         ]
       },
       "delete": {
+        "description": "Deletes all notifications for current admin user.",
         "operationId": "NotificationController_removeAll",
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "All notifications deleted successfully."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1742,26 +1961,35 @@
         ],
         "summary": "Delete all notifications",
         "tags": [
-          "Notification"
+          "Admin Notification"
         ]
       }
     },
     "/api/admin/notification/{id}": {
       "delete": {
+        "description": "Deletes a notification by id for current admin user.",
         "operationId": "NotificationController_remove",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
+            "description": "Notification id.",
             "schema": {
+              "example": "cm8q1n1f50000kq3g7d9h2zab",
               "type": "string"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "Notification deleted successfully."
+          },
+          "400": {
+            "description": "Invalid notification id."
+          },
+          "401": {
+            "description": "Unauthorized request."
           }
         },
         "security": [
@@ -1771,196 +1999,65 @@
         ],
         "summary": "Delete notification",
         "tags": [
-          "Notification"
-        ]
-      }
-    },
-    "/api/chat/conversation": {
-      "post": {
-        "operationId": "ConversationController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateConversationDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Create conversation",
-        "tags": [
-          "Conversation"
-        ]
-      },
-      "get": {
-        "operationId": "ConversationController_findAll",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get all conversations",
-        "tags": [
-          "Conversation"
-        ]
-      }
-    },
-    "/api/chat/conversation/{id}": {
-      "get": {
-        "operationId": "ConversationController_findOne",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get a conversation by id",
-        "tags": [
-          "Conversation"
-        ]
-      },
-      "delete": {
-        "operationId": "ConversationController_remove",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Delete a conversation",
-        "tags": [
-          "Conversation"
-        ]
-      }
-    },
-    "/api/chat/message": {
-      "post": {
-        "operationId": "MessageController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateMessageDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Send message",
-        "tags": [
-          "Message"
-        ]
-      },
-      "get": {
-        "operationId": "MessageController_findAll",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get all messages",
-        "tags": [
-          "Message"
-        ]
-      }
-    },
-    "/api/chat/user": {
-      "get": {
-        "operationId": "UserController_findAll",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": ""
-          }
-        },
-        "tags": [
-          "User"
+          "Admin Notification"
         ]
       }
     },
     "/api/payment/stripe/webhook": {
       "post": {
+        "description": "Receives Stripe webhook events. This endpoint is called by Stripe servers and validates `stripe-signature` before processing.",
         "operationId": "StripeController_handleWebhook",
         "parameters": [
           {
             "name": "stripe-signature",
             "required": true,
             "in": "header",
+            "description": "Stripe webhook signature header used for payload verification.",
             "schema": {
               "type": "string"
             }
           }
         ],
-        "responses": {
-          "201": {
-            "description": ""
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "example": {
+                  "id": "evt_1Rv9MrAbCdEfGhI",
+                  "type": "customer.subscription.updated",
+                  "data": {
+                    "object": {
+                      "id": "sub_1Rv8m5AbCdEfGhI",
+                      "customer": "cus_Rb6h7uS2nD4x4B",
+                      "status": "active"
+                    }
+                  }
+                }
+              }
+            }
           }
         },
+        "responses": {
+          "200": {
+            "description": "Webhook accepted and processed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StripeWebhookAckDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid webhook payload or missing/invalid stripe signature."
+          }
+        },
+        "summary": "Stripe webhook receiver",
         "tags": [
-          "Stripe"
+          "payment-stripe"
         ]
       }
     },
@@ -2159,17 +2256,1149 @@
           "subscription"
         ]
       }
+    },
+    "/api/users/suggest": {
+      "get": {
+        "operationId": "UsersController_suggest",
+        "parameters": [
+          {
+            "name": "q",
+            "required": true,
+            "in": "query",
+            "description": "Search query",
+            "schema": {
+              "example": "anik",
+              "type": "string"
+            }
+          },
+          {
+            "name": "take",
+            "required": false,
+            "in": "query",
+            "description": "Maximum users to return",
+            "schema": {
+              "example": "10"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User suggestions fetched successfully."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Suggest users for chat and member picker",
+        "tags": [
+          "chat-users"
+        ]
+      }
+    },
+    "/api/users/{id}/block": {
+      "post": {
+        "operationId": "UsersController_block",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Target user id",
+            "schema": {
+              "example": "cmmliufke0000v8xs48uyxj6p",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User blocked successfully."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Block a user for DM messaging",
+        "tags": [
+          "chat-users"
+        ]
+      },
+      "delete": {
+        "operationId": "UsersController_unblock",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Target user id",
+            "schema": {
+              "example": "cmmliufke0000v8xs48uyxj6p",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User unblocked successfully."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Unblock a previously blocked user",
+        "tags": [
+          "chat-users"
+        ]
+      }
+    },
+    "/api/conversations/dm": {
+      "post": {
+        "operationId": "ConversationsController_createDm",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDmDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "DM conversation created or existing conversation returned."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create or return a DM conversation",
+        "tags": [
+          "chat-conversations"
+        ]
+      }
+    },
+    "/api/conversations/group": {
+      "post": {
+        "operationId": "ConversationsController_createGroup",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "example": "Product Team"
+                  },
+                  "memberIds": {
+                    "oneOf": [
+                      {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "example": [
+                          "cmmlhoxaa0000v83s6kxio16b",
+                          "cmmliufke0000v8xs48uyxj6p"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "example": "cmmlhoxaa0000v83s6kxio16b,cmmliufke0000v8xs48uyxj6p"
+                      },
+                      {
+                        "type": "string",
+                        "example": "[\"cmmlhoxaa0000v83s6kxio16b\",\"cmmliufke0000v8xs48uyxj6p\"]"
+                      }
+                    ],
+                    "description": "Member ids as an array, a comma-separated string, or a JSON array string in multipart form-data."
+                  },
+                  "avatar": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "title",
+                  "memberIds"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Group conversation created successfully."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a group conversation",
+        "tags": [
+          "chat-conversations"
+        ]
+      }
+    },
+    "/api/conversations/group-conversations": {
+      "get": {
+        "operationId": "ConversationsController_listGroupConversations",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Group conversations fetched successfully."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List group conversations for current user",
+        "tags": [
+          "chat-conversations"
+        ]
+      }
+    },
+    "/api/conversations": {
+      "get": {
+        "operationId": "ConversationsController_listMine",
+        "parameters": [
+          {
+            "name": "skip",
+            "required": false,
+            "in": "query",
+            "description": "Records to skip",
+            "schema": {
+              "example": "0"
+            }
+          },
+          {
+            "name": "take",
+            "required": false,
+            "in": "query",
+            "description": "Page size",
+            "schema": {
+              "example": "20"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Conversations fetched successfully."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List my conversations",
+        "tags": [
+          "chat-conversations"
+        ]
+      }
+    },
+    "/api/conversations/{id}/unread": {
+      "get": {
+        "operationId": "ConversationsController_unread",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Conversation id",
+            "schema": {
+              "example": "cmmlk8qn20002v8xsglb2csrh",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Unread count fetched successfully."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get unread count for a conversation",
+        "tags": [
+          "chat-conversations"
+        ]
+      }
+    },
+    "/api/conversations/{id}/read": {
+      "patch": {
+        "operationId": "ConversationsController_markRead",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Conversation id",
+            "schema": {
+              "example": "cmmlk8qn20002v8xsglb2csrh",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "at": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2026-03-11T04:50:24.905Z"
+                  },
+                  "messageCreatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2026-03-11T04:50:24.905Z"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Conversation read marker updated."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mark conversation as read",
+        "tags": [
+          "chat-conversations"
+        ]
+      }
+    },
+    "/api/conversations/{id}/members": {
+      "post": {
+        "operationId": "ConversationsController_addMembers",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Conversation id",
+            "schema": {
+              "example": "cmmlk8qn20002v8xsglb2csrh",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "memberIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "example": [
+                      "cmmlhoxaa0000v83s6kxio16b",
+                      "cmmliufke0000v8xs48uyxj6p"
+                    ]
+                  }
+                },
+                "required": [
+                  "memberIds"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Members added successfully."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add members to a group conversation (admin only)",
+        "tags": [
+          "chat-conversations"
+        ]
+      },
+      "get": {
+        "operationId": "ConversationsController_getMembers",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Conversation id",
+            "schema": {
+              "example": "cmmlk8qn20002v8xsglb2csrh",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Group members fetched successfully."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get group members",
+        "tags": [
+          "chat-conversations"
+        ]
+      }
+    },
+    "/api/conversations/{id}/members/{userId}/role": {
+      "patch": {
+        "operationId": "ConversationsController_setRole",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Conversation id",
+            "schema": {
+              "example": "cmmlk8qn20002v8xsglb2csrh",
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "description": "Target user id",
+            "schema": {
+              "example": "cmmliufke0000v8xs48uyxj6p",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "MEMBER",
+                      "ADMIN"
+                    ],
+                    "example": "ADMIN"
+                  }
+                },
+                "required": [
+                  "role"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Member role updated successfully."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set role for a group member (admin only)",
+        "tags": [
+          "chat-conversations"
+        ]
+      }
+    },
+    "/api/conversations/{id}/members/{userId}/remove": {
+      "post": {
+        "operationId": "ConversationsController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Conversation id",
+            "schema": {
+              "example": "cmmlk8qn20002v8xsglb2csrh",
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "description": "Target user id",
+            "schema": {
+              "example": "cmmliufke0000v8xs48uyxj6p",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Member removed successfully."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove member from group (admin only)",
+        "tags": [
+          "chat-conversations"
+        ]
+      }
+    },
+    "/api/conversations/{id}/clear": {
+      "patch": {
+        "operationId": "ConversationsController_clearForMe",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Conversation id",
+            "schema": {
+              "example": "cmmlk8qn20002v8xsglb2csrh"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "upTo": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2026-03-11T07:17:31.311Z"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Conversation cleared for current user."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Clear conversation history for current user only",
+        "tags": [
+          "chat-conversations"
+        ]
+      }
+    },
+    "/api/conversations/{id}/messages": {
+      "get": {
+        "operationId": "MessagesController_list",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Conversation id",
+            "schema": {
+              "example": "cmmlk8qn20002v8xsglb2csrh",
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Cursor message id",
+            "schema": {
+              "example": "cmmlpi7n2000bv8zocsggy7ze",
+              "type": "string"
+            }
+          },
+          {
+            "name": "take",
+            "required": false,
+            "in": "query",
+            "description": "Page size",
+            "schema": {
+              "minimum": 1,
+              "maximum": 500,
+              "default": 20,
+              "example": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Messages fetched successfully."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List messages in a conversation (cursor pagination)",
+        "tags": [
+          "chat-messages"
+        ]
+      }
+    },
+    "/api/messages/search": {
+      "get": {
+        "operationId": "MessagesController_search",
+        "parameters": [
+          {
+            "name": "q",
+            "required": true,
+            "in": "query",
+            "description": "Search keyword",
+            "schema": {
+              "maxLength": 200,
+              "example": "project update",
+              "type": "string"
+            }
+          },
+          {
+            "name": "conversationId",
+            "required": false,
+            "in": "query",
+            "description": "Limit results to one conversation",
+            "schema": {
+              "example": "cmmn2apd30005v86czackjfox",
+              "type": "string"
+            }
+          },
+          {
+            "name": "skip",
+            "required": false,
+            "in": "query",
+            "description": "Number of records to skip",
+            "schema": {
+              "minimum": 0,
+              "default": 0,
+              "type": "number"
+            }
+          },
+          {
+            "name": "take",
+            "required": false,
+            "in": "query",
+            "description": "Maximum records to return",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results fetched successfully."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Search messages by keyword",
+        "tags": [
+          "chat-messages"
+        ]
+      }
+    },
+    "/api/conversations/{id}/messages/upload": {
+      "post": {
+        "description": "Production flow: use this endpoint for media/file messages in a conversation. For pure realtime text-only messages, use websocket event \"message:send\" on namespace \"/ws\". This endpoint creates and stores the message in DB and now also emits realtime \"message:new\" to the conversation room.",
+        "operationId": "MessagesController_uploadAndSend",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Conversation id",
+            "schema": {
+              "example": "cmmlk8qn20002v8xsglb2csrh",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "media": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "IMAGE",
+                      "VIDEO",
+                      "FILE",
+                      "AUDIO"
+                    ],
+                    "example": "FILE"
+                  },
+                  "content": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "example": "{\"text\":\"caption\",\"fileName\":\"doc.pdf\",\"mime\":\"application/pdf\"}"
+                      },
+                      {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    ]
+                  },
+                  "media_Url": {
+                    "type": "string",
+                    "description": "Optional pre-uploaded media URL. If media file is provided, uploaded file URL is used.",
+                    "example": "https://cdn.example.com/file.pdf"
+                  }
+                },
+                "required": [
+                  "media"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Message uploaded and stored successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": "cmn123abc456",
+                    "kind": "FILE",
+                    "content": {
+                      "text": "Proposal attached",
+                      "fileName": "proposal.pdf"
+                    },
+                    "createdAt": "2026-03-12T12:00:00.000Z",
+                    "senderId": "cmmmysivw0000v8fgdk4animh",
+                    "conversationId": "cmmlk8qn20002v8xsglb2csrh",
+                    "media_Url": "http://localhost:9000/sazed/attachment/abc_proposal.pdf"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid payload, invalid content JSON, missing required fields, or unsupported media type."
+          },
+          "401": {
+            "description": "Unauthorized token or user not authenticated."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Upload media and send message",
+        "tags": [
+          "chat-messages"
+        ]
+      }
+    },
+    "/api/messages/{messageId}": {
+      "delete": {
+        "operationId": "MessagesController_remove",
+        "parameters": [
+          {
+            "name": "messageId",
+            "required": true,
+            "in": "path",
+            "description": "Message id",
+            "schema": {
+              "example": "cmmlpi7n2000bv8zocsggy7ze",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Message deleted successfully."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a message for current user permissions scope",
+        "tags": [
+          "chat-messages"
+        ]
+      }
+    },
+    "/api/conversations/{id}/media": {
+      "get": {
+        "operationId": "MessagesController_listMedia",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Conversation id",
+            "schema": {
+              "example": "cmmlk8qn20002v8xsglb2csrh",
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Cursor message id",
+            "schema": {
+              "example": "cmmlpi7n2000bv8zocsggy7ze",
+              "type": "string"
+            }
+          },
+          {
+            "name": "take",
+            "required": false,
+            "in": "query",
+            "description": "Page size",
+            "schema": {
+              "minimum": 1,
+              "maximum": 500,
+              "default": 20,
+              "example": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Media messages fetched successfully."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List image/video/audio messages in a conversation",
+        "tags": [
+          "chat-messages"
+        ]
+      }
+    },
+    "/api/conversations/{id}/files": {
+      "get": {
+        "operationId": "MessagesController_listFiles",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Conversation id",
+            "schema": {
+              "example": "cmmlk8qn20002v8xsglb2csrh",
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "description": "Cursor message id",
+            "schema": {
+              "example": "cmmlpi7n2000bv8zocsggy7ze",
+              "type": "string"
+            }
+          },
+          {
+            "name": "take",
+            "required": false,
+            "in": "query",
+            "description": "Page size",
+            "schema": {
+              "minimum": 1,
+              "maximum": 500,
+              "default": 20,
+              "example": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File messages fetched successfully."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List file messages in a conversation",
+        "tags": [
+          "chat-messages"
+        ]
+      }
+    },
+    "/api/rtc/conversations/{id}/start": {
+      "post": {
+        "operationId": "RtcController_startCall",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Conversation id",
+            "schema": {
+              "example": "cmmlk8qn20002v8xsglb2csrh",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "AUDIO",
+                      "VIDEO"
+                    ],
+                    "example": "VIDEO"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Call started successfully."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start call for a conversation",
+        "tags": [
+          "chat-rtc"
+        ]
+      }
+    },
+    "/api/rtc/conversations/{id}/join": {
+      "post": {
+        "operationId": "RtcController_joinCall",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Conversation id",
+            "schema": {
+              "example": "cmmlk8qn20002v8xsglb2csrh",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Joined call successfully."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Join active call in a conversation",
+        "tags": [
+          "chat-rtc"
+        ]
+      }
+    },
+    "/api/rtc/conversations/{id}/leave": {
+      "post": {
+        "operationId": "RtcController_leaveCall",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Conversation id",
+            "schema": {
+              "example": "cmmlk8qn20002v8xsglb2csrh",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Left call successfully."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Leave active call",
+        "tags": [
+          "chat-rtc"
+        ]
+      }
+    },
+    "/api/rtc/conversations/{id}/end": {
+      "post": {
+        "operationId": "RtcController_endCall",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Conversation id",
+            "schema": {
+              "example": "cmmlk8qn20002v8xsglb2csrh",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Call ended successfully."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "End active call for a conversation",
+        "tags": [
+          "chat-rtc"
+        ]
+      }
+    },
+    "/api/rtc/conversations/{id}/token": {
+      "post": {
+        "operationId": "RtcController_issueConversationToken",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Conversation id",
+            "schema": {
+              "example": "cmmlk8qn20002v8xsglb2csrh",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Call token issued successfully."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Issue LiveKit token for current user in conversation",
+        "tags": [
+          "chat-rtc"
+        ]
+      }
+    },
+    "/api/rtc/health": {
+      "get": {
+        "operationId": "RtcController_health",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "RTC health status."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "RTC service health check",
+        "tags": [
+          "chat-rtc"
+        ]
+      }
     }
   },
   "info": {
-    "title": "Application Name api",
-    "description": "Application Name api docs",
-    "version": "1.0",
+    "title": "Boilerplate App API",
+    "description": "Boilerplate App API documentation | Maintainer: Sazedul Islam | Contact: sazedul.bdcalling@gmail.com",
+    "version": "1.0.0",
     "contact": {}
   },
   "tags": [
     {
-      "name": "Application Name",
+      "name": "Boilerplate App",
       "description": ""
     }
   ],
@@ -2189,12 +3418,12 @@
           "otp": {
             "type": "string",
             "description": "The OTP code to verify",
-            "example": "123456"
+            "example": "1234"
           },
           "email": {
             "type": "string",
             "description": "The user email",
-            "example": "user@example.com"
+            "example": "john.doe@example.com"
           }
         },
         "required": [
@@ -2208,7 +3437,7 @@
           "email": {
             "type": "string",
             "description": "The email of the user",
-            "example": "user@example.com"
+            "example": "john.doe@example.com"
           },
           "password": {
             "type": "string",
@@ -2255,11 +3484,6 @@
           "idToken": {
             "type": "string",
             "description": "Google ID token from Flutter (GoogleSignInAuthentication.idToken)"
-          },
-          "timezone": {
-            "type": "string",
-            "description": "IANA timezone string (e.g., America/New_York, Asia/Dhaka)",
-            "example": "UTC"
           }
         },
         "required": [
@@ -2282,11 +3506,6 @@
           },
           "lastName": {
             "type": "string"
-          },
-          "timezone": {
-            "type": "string",
-            "description": "IANA timezone string (e.g., America/New_York, Asia/Dhaka)",
-            "example": "UTC"
           }
         },
         "required": [
@@ -2296,37 +3515,30 @@
       "CreateContactDto": {
         "type": "object",
         "properties": {
-          "first_name": {
+          "name": {
             "type": "string",
-            "description": "First name",
-            "example": "John"
-          },
-          "last_name": {
-            "type": "string",
-            "description": "Last name",
-            "example": "Doe"
+            "description": "Name of the contact sender",
+            "example": "John Doe"
           },
           "email": {
             "type": "string",
-            "description": "Email",
+            "description": "Email address of the contact sender",
             "example": "john.doe@example.com"
           },
           "phone_number": {
             "type": "string",
-            "description": "Phone number",
+            "description": "Phone number of the contact sender",
             "example": "+1234567890"
           },
           "message": {
             "type": "string",
-            "description": "Message",
+            "description": "Message from the contact sender",
             "example": "Hello, I have a question about your product."
           }
         },
         "required": [
-          "first_name",
-          "last_name",
+          "name",
           "email",
-          "phone_number",
           "message"
         ]
       },
@@ -2351,8 +3563,7 @@
         },
         "required": [
           "question",
-          "answer",
-          "sort_order"
+          "answer"
         ]
       },
       "BatchCreateFaqDto": {
@@ -2400,90 +3611,27 @@
       "UpdateContactDto": {
         "type": "object",
         "properties": {
-          "first_name": {
+          "name": {
             "type": "string",
-            "description": "First name",
-            "example": "John"
-          },
-          "last_name": {
-            "type": "string",
-            "description": "Last name",
-            "example": "Doe"
+            "description": "Name of the contact sender",
+            "example": "John Doe"
           },
           "email": {
             "type": "string",
-            "description": "Email",
+            "description": "Email address of the contact sender",
             "example": "john.doe@example.com"
           },
           "phone_number": {
             "type": "string",
-            "description": "Phone number",
+            "description": "Phone number of the contact sender",
             "example": "+1234567890"
           },
           "message": {
             "type": "string",
-            "description": "Message",
+            "description": "Message from the contact sender",
             "example": "Hello, I have a question about your product."
           }
         }
-      },
-      "CreateWebsiteInfoDto": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "The name of the website",
-            "example": "My Website"
-          },
-          "phone_number": {
-            "type": "string",
-            "description": "The phone number of the website",
-            "example": "081234567890"
-          },
-          "email": {
-            "type": "string",
-            "description": "The email of the website",
-            "example": "mywebsite@gmail.com"
-          },
-          "address": {
-            "type": "string",
-            "description": "The address of the website",
-            "example": "Jl. Raya No. 123, Jakarta, Indonesia"
-          },
-          "logo": {
-            "description": "The logo of the website",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "favicon": {
-            "description": "The favicon of the website",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "copyright": {
-            "type": "string",
-            "description": "The copyright of the website",
-            "example": "© 2025 My Website. All rights reserved."
-          },
-          "cancellation_policy": {
-            "type": "string",
-            "description": "The cancellation policy of the website"
-          }
-        },
-        "required": [
-          "name",
-          "phone_number",
-          "email",
-          "address",
-          "logo",
-          "favicon",
-          "copyright",
-          "cancellation_policy"
-        ]
       },
       "CreateUserAdminDto": {
         "type": "object",
@@ -2532,12 +3680,7 @@
         "required": [
           "name",
           "email",
-          "password",
-          "type",
-          "avatar",
-          "date_of_birth",
-          "gender",
-          "address"
+          "password"
         ]
       },
       "UpdateUserAdminDto": {
@@ -2585,40 +3728,22 @@
           }
         }
       },
-      "CreateConversationDto": {
+      "StripeWebhookAckDto": {
         "type": "object",
         "properties": {
-          "creator_id": {
-            "type": "string",
-            "description": "The id of the creator"
+          "received": {
+            "type": "boolean",
+            "description": "Indicates whether webhook was accepted and processed.",
+            "example": true
           },
-          "participant_id": {
+          "eventType": {
             "type": "string",
-            "description": "The id of the participant"
+            "description": "Stripe event type processed by backend.",
+            "example": "customer.subscription.updated"
           }
         },
         "required": [
-          "creator_id",
-          "participant_id"
-        ]
-      },
-      "CreateMessageDto": {
-        "type": "object",
-        "properties": {
-          "receiver_id": {
-            "type": "string"
-          },
-          "conversation_id": {
-            "type": "string"
-          },
-          "message": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "receiver_id",
-          "conversation_id",
-          "message"
+          "received"
         ]
       },
       "CreateProductAndPriceDto": {
@@ -2704,6 +3829,19 @@
         "required": [
           "token",
           "productId"
+        ]
+      },
+      "CreateDmDto": {
+        "type": "object",
+        "properties": {
+          "otherUserId": {
+            "type": "string",
+            "description": "Target user id for direct message creation",
+            "example": "cmmlhoxaa0000v83s6kxio16b"
+          }
+        },
+        "required": [
+          "otherUserId"
         ]
       }
     }

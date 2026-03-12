@@ -24,6 +24,7 @@ import { DateHelper } from '../../common/helper/date.helper';
 import { StripePayment } from '../../common/lib/Payment/stripe/StripePayment';
 import { StringHelper } from '../../common/helper/string.helper';
 import { CreateUserDto } from './dto/create-user.dto';
+import { NotificationRepository } from '../../common/repository/notification/notification.repository';
 
 @Injectable()
 export class AuthService {
@@ -33,6 +34,23 @@ export class AuthService {
     private mailService: MailService,
     @InjectRedis() private readonly redis: Redis,
   ) {}
+
+  private async createAuthNotification(
+    receiverId: string,
+    text: string,
+    senderId?: string,
+  ) {
+    try {
+      await NotificationRepository.createNotification({
+        sender_id: senderId,
+        receiver_id: receiverId,
+        type: 'auth',
+        text,
+      });
+    } catch (error) {
+      console.error('Failed to create auth notification:', error);
+    }
+  }
 
   // async register({
   //   name,
@@ -184,9 +202,13 @@ export class AuthService {
           id: true,
           name: true,
           email: true,
+          status: true,
           avatar: true,
           address: true,
           phone_number: true,
+          city: true,
+          state: true,
+          country: true,
           type: true,
           gender: true,
           date_of_birth: true,
@@ -410,19 +432,10 @@ export class AuthService {
         console.error('Failed to create Stripe customer:', error);
       }
 
-      // Send welcome notification
-      // try {
-      //   await this.notificationsService.sendNotification({
-      //     type: NotificationType.USER_REGISTERED,
-      //     recipient_id: user.data.id,
-      //     variables: {
-      //       user_name: registrationData.name,
-      //       platform_name: 'Sports Coaching',
-      //     },
-      //   });
-      // } catch (error) {
-      //   console.error('Failed to send welcome notification:', error);
-      // }
+      await this.createAuthNotification(
+        user.data.id,
+        `Welcome to ${appConfig().app.name}. Your account has been created successfully.`,
+      );
 
       // Clean up Redis
       await this.redis.del(`registration_pending:${email}`);
@@ -466,9 +479,6 @@ export class AuthService {
       }
       if (updateUserDto.state) {
         data.state = updateUserDto.state;
-      }
-      if (updateUserDto.local_government) {
-        data.local_government = updateUserDto.local_government;
       }
       if (updateUserDto.city) {
         data.city = updateUserDto.city;
@@ -542,6 +552,11 @@ export class AuthService {
             ...data,
           },
         });
+
+        await this.createAuthNotification(
+          user.id,
+          'Your account profile information has been updated.',
+        );
 
         return {
           success: true,
@@ -630,6 +645,11 @@ export class AuthService {
         refreshToken,
         'EX',
         60 * 60 * 24 * 7, // 7 days in seconds
+      );
+
+      await this.createAuthNotification(
+        user.id,
+        'New login detected on your account.',
       );
 
       return {
@@ -852,9 +872,15 @@ export class AuthService {
           otp: token,
         });
 
+        await this.createAuthNotification(
+          user.id,
+          'Password reset code was requested for your account.',
+        );
+
         return {
           success: true,
           message: 'We have sent an OTP code to your email',
+          otp: token, // For testing only - remove in production
         };
       } else {
         return {
@@ -934,6 +960,11 @@ export class AuthService {
             token: token,
           });
 
+          await this.createAuthNotification(
+            user.id,
+            'Your account password has been changed successfully.',
+          );
+
           return {
             success: true,
             message: 'Password updated successfully',
@@ -986,6 +1017,11 @@ export class AuthService {
           //   email: email,
           //   token: token,
           // });
+
+          await this.createAuthNotification(
+            user.id,
+            'Your email has been verified successfully.',
+          );
 
           return {
             success: true,
@@ -1062,6 +1098,11 @@ export class AuthService {
             password: newPassword,
           });
 
+          await this.createAuthNotification(
+            user.id,
+            'Your account password has been changed successfully.',
+          );
+
           return {
             success: true,
             message: 'Password updated successfully',
@@ -1102,9 +1143,15 @@ export class AuthService {
           otp: token,
         });
 
+        await this.createAuthNotification(
+          user.id,
+          `Email change requested to ${email}.`,
+        );
+
         return {
           success: true,
           message: 'We have sent an OTP code to your email',
+          otp: token, // For testing only - remove in production
         };
       } else {
         return {
@@ -1145,11 +1192,18 @@ export class AuthService {
             new_email: new_email,
           });
 
+          console.log('Email updated in database for user:', user);
+
           // delete otp code
           await UcodeRepository.deleteToken({
             email: new_email,
             token: token,
           });
+
+          await this.createAuthNotification(
+            user.id,
+            `Your account email has been changed to ${new_email}.`,
+          );
 
           return {
             success: true,
@@ -1213,6 +1267,10 @@ export class AuthService {
       const user = await UserRepository.getUserDetails(user_id);
       if (user) {
         await UserRepository.enable2FA(user_id);
+        await this.createAuthNotification(
+          user.id,
+          'Two-factor authentication has been enabled on your account.',
+        );
         return {
           success: true,
           message: '2FA enabled successfully',
@@ -1236,6 +1294,10 @@ export class AuthService {
       const user = await UserRepository.getUserDetails(user_id);
       if (user) {
         await UserRepository.disable2FA(user_id);
+        await this.createAuthNotification(
+          user.id,
+          'Two-factor authentication has been disabled on your account.',
+        );
         return {
           success: true,
           message: '2FA disabled successfully',

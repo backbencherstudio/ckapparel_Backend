@@ -9,12 +9,11 @@ export class ContactService {
 
   async create(createContactDto: CreateContactDto) {
     try {
+
       const data = {};
-      if (createContactDto.first_name) {
-        data['first_name'] = createContactDto.first_name;
-      }
-      if (createContactDto.last_name) {
-        data['last_name'] = createContactDto.last_name;
+      
+      if (createContactDto.name) {
+        data['name'] = createContactDto.name;
       }
       if (createContactDto.email) {
         data['email'] = createContactDto.email;

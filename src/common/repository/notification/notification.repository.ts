@@ -38,7 +38,8 @@ export class NotificationRepository {
       | 'booking'
       | 'payment_transaction'
       | 'package'
-      | 'blog';
+      | 'blog'
+      | 'auth';
     entity_id?: string;
   }) {
     const notificationEventData = {};

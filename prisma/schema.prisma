@@ -62,6 +62,7 @@ model User {
   zip_code      String?
   gender        String?
   date_of_birth DateTime? @db.Date
+  lastSeenAt    DateTime? @map("last_seen_at")
 
   // billing id. e.g. stripe customer id
   billing_id String?
@@ -77,8 +78,15 @@ model User {
   participant_conversations Conversation[] @relation("participant")
   receiver_messages         Message[]      @relation("receiver")
   sender_messages           Message[]      @relation("sender")
+  deleted_messages          Message[]      @relation("message_deleted_by")
   receiver_notifications    Notification[] @relation("receiver")
   sender_notifications      Notification[] @relation("sender")
+  memberships               Membership[]
+  blocksInitiated           Block[]        @relation("Blocker")
+  blockedBy                 Block[]        @relation("Blocked")
+  callParticipations        CallParticipant[]
+  startedCalls              CallSession[]  @relation("CallStartedBy")
+  reportsFiled              Report[]       @relation("ReportReporter")
 
   user_payment_methods UserPaymentMethod[]
   user_settings        UserSetting[]
@@ -363,28 +371,68 @@ enum MessageStatus {
   READ
 }
 
+enum ConversationType {
+  DM
+  GROUP
+}
+
+enum MemberRole {
+  MEMBER
+  ADMIN
+}
+
+enum MessageKind {
+  TEXT
+  IMAGE
+  VIDEO
+  FILE
+  AUDIO
+  SYSTEM
+}
+
+enum CallKind {
+  AUDIO
+  VIDEO
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWED
+  RESOLVED
+  DISMISSED
+}
+
 // message is used for conversation
 model Message {
-  id         String    @id @default(cuid())
-  created_at DateTime  @default(now())
-  updated_at DateTime  @default(now())
-  deleted_at DateTime?
+  id          String       @id @default(cuid())
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @default(now()) @map("updated_at")
+  deletedAt   DateTime?    @map("deleted_at")
+  readAt      DateTime?    @map("read_at")
 
   status MessageStatus? @default(PENDING)
+  kind   MessageKind    @default(TEXT)
 
-  sender_id String?
-  sender    User?   @relation("sender", fields: [sender_id], references: [id])
+  senderId String? @map("sender_id")
+  sender   User?   @relation("sender", fields: [senderId], references: [id])
 
-  receiver_id String?
-  receiver    User?   @relation("receiver", fields: [receiver_id], references: [id])
+  receiverId String? @map("receiver_id")
+  receiver   User?   @relation("receiver", fields: [receiverId], references: [id])
 
-  conversation_id String?
-  conversation    Conversation? @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  conversationId String?       @map("conversation_id")
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
-  attachment_id String?
-  attachment    Attachment? @relation(fields: [attachment_id], references: [id])
+  attachmentId String?      @map("attachment_id")
+  attachment   Attachment?  @relation(fields: [attachmentId], references: [id])
+  deletedById  String?      @map("deleted_by_id")
+  deletedBy    User?        @relation("message_deleted_by", fields: [deletedById], references: [id])
+  media_Url    String?      @map("media_url")
+  content      Json?
+  message      String?
+  reports      Report[]
 
-  message String?
+  @@index([conversationId, createdAt])
+  @@index([senderId])
 
   @@map("messages")
 }
@@ -409,20 +457,128 @@ model Attachment {
 
 // this table stores conversation
 model Conversation {
-  id         String    @id @default(cuid())
-  created_at DateTime  @default(now())
-  updated_at DateTime  @default(now())
-  deleted_at DateTime?
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
 
-  creator_id String?
-  creator    User?   @relation("creator", fields: [creator_id], references: [id])
+  type          ConversationType @default(DM)
+  title         String?
+  avatarUrl     String? @map("avatar_url")
+  senderTitle   String? @map("sender_title")
+  receiverTitle String? @map("receiver_title")
+  dmKey         String? @unique @map("dm_key")
+  createdBy     String? @map("created_by")
 
-  participant_id String?
-  participant    User?   @relation("participant", fields: [participant_id], references: [id])
+  creatorId String? @map("creator_id")
+  creator   User?   @relation("creator", fields: [creatorId], references: [id])
 
-  messages Message[]
+  participantId String? @map("participant_id")
+  participant   User?   @relation("participant", fields: [participantId], references: [id])
+
+  messages     Message[]
+  memberships  Membership[]
+  callSessions CallSession[]
+
+  @@index([type])
+  @@index([updatedAt])
 
   @@map("conversations")
+}
+
+model Membership {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  conversationId String       @map("conversation_id")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  role       MemberRole @default(MEMBER)
+  lastReadAt DateTime?  @map("last_read_at")
+  clearedAt  DateTime?  @map("cleared_at")
+  archivedAt DateTime?  @map("archived_at")
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@index([conversationId])
+  @@map("memberships")
+}
+
+model Block {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  blockerId String @map("blocker_id")
+  blocker   User   @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+
+  blockedId String @map("blocked_id")
+  blocked   User   @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+  @@map("blocks")
+}
+
+model CallSession {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @map("updated_at")
+  startedAt DateTime  @default(now()) @map("started_at")
+  endedAt   DateTime? @map("ended_at")
+
+  conversationId String       @map("conversation_id")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  startedBy String @map("started_by")
+  starter   User   @relation("CallStartedBy", fields: [startedBy], references: [id], onDelete: Cascade)
+
+  kind         CallKind
+  participants CallParticipant[]
+
+  @@index([conversationId, endedAt])
+  @@map("call_sessions")
+}
+
+model CallParticipant {
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @map("updated_at")
+  joinedAt  DateTime  @default(now()) @map("joined_at")
+  leftAt    DateTime? @map("left_at")
+
+  callId String      @map("call_id")
+  call   CallSession @relation(fields: [callId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([callId, userId])
+  @@index([userId])
+  @@map("call_participants")
+}
+
+model Report {
+  id        String       @id @default(cuid())
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @default(now()) @map("updated_at")
+
+  messageId String  @map("message_id")
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  reporterId String @map("reporter_id")
+  reporter   User   @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  reason String?
+  status ReportStatus @default(OPEN)
+
+  @@index([messageId])
+  @@index([reporterId])
+  @@map("reports")
 }
 
 // ---------End Chat schema---------
@@ -447,8 +603,7 @@ model Contact {
   updated_at DateTime  @default(now())
   deleted_at DateTime?
 
-  first_name   String?
-  last_name    String?
+  name         String?
   email        String?
   phone_number String?
   message      String?

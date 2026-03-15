@@ -131,8 +131,8 @@ export class ConversationsService {
         throw new BadRequestException('Group avatar size must be 5MB or less');
       }
 
-      const avatarFolder = appConfig().storageUrl.avatar
-        .replace(/^\/+/, '')
+      const avatarFolder = appConfig()
+        .storageUrl.avatar.replace(/^\/+/, '')
         .replace(/\/+$/, '');
       const safeExt =
         extname(avatar.originalname || '').toLowerCase() ||
@@ -165,7 +165,6 @@ export class ConversationsService {
       include: { memberships: true },
     });
   }
-
 
   // list conversations the user is in
   async myConversations(
@@ -217,10 +216,7 @@ export class ConversationsService {
     for (const c of convs) {
       const me = c.memberships.find((m) => m.userId === userId);
       const lb = new Date(
-        Math.max(
-          me?.lastReadAt?.getTime() ?? 0,
-          me?.clearedAt?.getTime() ?? 0,
-        ),
+        Math.max(me?.lastReadAt?.getTime() ?? 0, me?.clearedAt?.getTime() ?? 0),
       );
       bounds[c.id] = lb;
     }
@@ -236,7 +232,7 @@ export class ConversationsService {
           createdAt: { gt: lb },
         },
       });
-      
+
       // Add the other participant's avatar for DMs
       let otherUserAvatar = null;
       if (c.type === ConversationType.DM) {
@@ -253,12 +249,11 @@ export class ConversationsService {
           }
         }
       }
-      
+
       enriched.push({ ...c, unread, otherUserAvatar });
     }
     return opts?.unreadOnly ? enriched.filter((c) => c.unread > 0) : enriched;
   }
-
 
   async listGroupConversations(userId: string) {
     const groups = await this.prisma.conversation.findMany({
@@ -324,7 +319,6 @@ export class ConversationsService {
     return { conversationId, lastReadAt: next, unread };
   }
 
-
   // ---- member management ----
   async addMembers(
     conversationId: string,
@@ -361,7 +355,6 @@ export class ConversationsService {
     return { ok: true, added: toAdd };
   }
 
-
   // list members of a group conversation
   async getGroupMembers(conversationId: string, currentUserId: string) {
     await this.ensureMember(conversationId, currentUserId);
@@ -371,7 +364,9 @@ export class ConversationsService {
       select: { type: true },
     });
     if (!conv || conv.type !== ConversationType.GROUP) {
-      throw new BadRequestException('Members list is available only for group conversations');
+      throw new BadRequestException(
+        'Members list is available only for group conversations',
+      );
     }
 
     const members = await this.prisma.membership.findMany({
@@ -381,10 +376,7 @@ export class ConversationsService {
         role: true,
         user: { select: { name: true, username: true, avatar: true } },
       },
-      orderBy: [
-        { role: 'desc' },
-        { createdAt: 'asc' },
-      ],
+      orderBy: [{ role: 'desc' }, { createdAt: 'asc' }],
     });
 
     return members.map((m) => ({
@@ -396,7 +388,6 @@ export class ConversationsService {
       role: m.role,
     }));
   }
-
 
   // change role of a member (admin only)
   async removeMember(
@@ -410,7 +401,6 @@ export class ConversationsService {
     });
     return { ok: true };
   }
-
 
   // change role of a member (admin only)
   async setRole(
@@ -426,7 +416,6 @@ export class ConversationsService {
     });
     return { ok: true };
   }
-
 
   // get unread count for a conversation
   async unreadFor(conversationId: string, userId: string) {
@@ -444,7 +433,6 @@ export class ConversationsService {
     });
     return { conversationId, unread };
   }
-
 
   //------ clear conversation for me----
   async clearForUser(conversationId: string, userId: string, upTo?: Date) {

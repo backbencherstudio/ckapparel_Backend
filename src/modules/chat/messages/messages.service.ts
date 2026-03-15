@@ -52,7 +52,7 @@ export class MessagesService {
       ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
       include: {
         sender: {
-          select: { id: true, name: true, avatar: true },
+          select: { id: true, name: true, avatar: true,  },
         },
       },
     });
@@ -85,7 +85,10 @@ export class MessagesService {
         .replace(/\s+/g, '_')
         .replace(/[^a-zA-Z0-9._-]/g, '');
       const filename = `${StringHelper.randomString(10)}_${safeOriginalName}`;
-      const attachmentPrefix = appConfig().storageUrl.attachment.replace(/^\/+/, '');
+      const attachmentPrefix = appConfig().storageUrl.attachment.replace(
+        /^\/+/,
+        '',
+      );
       const objectKey = `${attachmentPrefix}/${filename}`;
 
       await SazedStorage.put(objectKey, file.buffer);

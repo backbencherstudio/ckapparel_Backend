@@ -3405,7 +3405,12 @@
   "servers": [],
   "components": {
     "securitySchemes": {
-      "bearer": {
+      "user_token": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      },
+      "admin_token": {
         "scheme": "bearer",
         "bearerFormat": "JWT",
         "type": "http"

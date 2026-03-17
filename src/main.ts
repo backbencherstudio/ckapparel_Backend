@@ -21,7 +21,8 @@ function getAppProfileFromEnv() {
   const appEnv = process.env.APP_ENV || process.env.NODE_ENV || 'development';
   const appUrl = process.env.APP_URL || null;
   const clientUrl = process.env.CLIENT_APP_URL || null;
-  const appVersion = process.env.APP_VERSION || process.env.npm_package_version || null;
+  const appVersion =
+    process.env.APP_VERSION || process.env.npm_package_version || null;
 
   const developerName =
     process.env.APP_DEVELOPER_NAME ||
@@ -33,7 +34,8 @@ function getAppProfileFromEnv() {
     process.env.DEVELOPER_EMAIL ||
     process.env.AUTHOR_EMAIL ||
     null;
-  const companyName = process.env.APP_COMPANY || process.env.COMPANY_NAME || null;
+  const companyName =
+    process.env.APP_COMPANY || process.env.COMPANY_NAME || null;
 
   return {
     appName,
@@ -211,14 +213,96 @@ async function bootstrap() {
     .setDescription(swaggerDescriptionParts.join(' | '))
     .setVersion(profile.appVersion || '1.0')
     .addTag(profile.appName)
-    .addBearerAuth()
+    .addBearerAuth(
+      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+      'user_token',
+    )
+    .addBearerAuth(
+      { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+      'admin_token',
+    )
     .build();
+
   const document = SwaggerModule.createDocument(app, options);
 
   writeFileSync('./openapi.json', JSON.stringify(document, null, 2));
- SwaggerModule.setup('api/docs', app, document, {
+  SwaggerModule.setup('api/docs', app, document, {
     swaggerOptions: {
       persistAuthorization: true,
+
+      responseInterceptor: function (response) {
+        console.log('Swagger Interceptor Fired! URL:', response.url);
+
+        try {
+          if (response.url && response.url.indexOf('/auth/login') !== -1) {
+            console.log('Login API detected! Status:', response.status);
+
+            if (response.status === 200 || response.status === 201) {
+              var data = response.data || response.body || response.obj;
+
+              if (typeof data === 'string') {
+                data = JSON.parse(data);
+              }
+
+              console.log('Login Response Data:', data);
+
+              var token =
+                data && data.authorization && data.authorization.access_token;
+              var type = data && data.type;
+
+              if (!token) {
+                console.log('Error: Token not found in the response!');
+                return response;
+              }
+
+              var key =
+                type === 'su_admin' || 'admin' ? 'admin_token' : 'user_token';
+
+              var ui = (window as any).ui;
+
+              if (ui) {
+                var authObj = {};
+                authObj[key] = {
+                  name: key,
+                  schema: {
+                    type: 'http',
+                    scheme: 'bearer',
+                    bearerFormat: 'JWT',
+                  },
+                  value: token,
+                };
+
+                ui.authActions.authorize(authObj);
+
+                try {
+                  var currentAuth = window.localStorage.getItem('authorized');
+                  var parsedAuth = currentAuth ? JSON.parse(currentAuth) : {};
+
+                  parsedAuth[key] = authObj[key];
+
+                  window.localStorage.setItem(
+                    'authorized',
+                    JSON.stringify(parsedAuth),
+                  );
+                  console.log('Token successfully persisted to localStorage!');
+                } catch (e) {
+                  console.error('Failed to save token to localStorage', e);
+                }
+
+                console.log(
+                  'Success: Swagger auto authorized with ' + key + '!',
+                );
+              } else {
+                console.log('Error: Swagger UI instance not found on window!');
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Swagger token auto set failed:', err);
+        }
+
+        return response;
+      },
     },
   });
   // end swagger

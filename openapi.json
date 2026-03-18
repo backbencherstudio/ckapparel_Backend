@@ -15,7 +15,7 @@
                   "example": {
                     "ok": true,
                     "message": "Server is running",
-                    "appName": "Boilerplate App",
+                    "appName": "Athlete Challenges App",
                     "version": "0.0.1",
                     "env": "development",
                     "uptimeSec": 3600
@@ -3391,14 +3391,14 @@
     }
   },
   "info": {
-    "title": "Boilerplate App API",
-    "description": "Boilerplate App API documentation | Maintainer: Sazedul Islam | Contact: sazedul.bdcalling@gmail.com",
+    "title": "Athlete Challenges App API",
+    "description": "Athlete Challenges App API documentation | Maintainer: Sazedul Islam | Contact: sazedul.bdcalling@gmail.com",
     "version": "1.0.0",
     "contact": {}
   },
   "tags": [
     {
-      "name": "Boilerplate App",
+      "name": "Athlete Challenges App",
       "description": ""
     }
   ],

@@ -28,7 +28,7 @@ import { Roles } from '../../../common/guard/role/roles.decorator';
 import { RolesGuard } from '../../../common/guard/role/roles.guard';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
-@ApiBearerAuth()
+@ApiBearerAuth('admin_token')
 @ApiTags('Admin User Management')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)

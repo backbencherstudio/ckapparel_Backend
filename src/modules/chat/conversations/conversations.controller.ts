@@ -33,7 +33,8 @@ import { MemberRole } from '@prisma/client';
 
 @UseGuards(JwtAuthGuard)
 @ApiTags('chat-conversations')
-@ApiBearerAuth()
+@ApiBearerAuth('user_token')
+@ApiBearerAuth('admin_token')
 @Controller('conversations')
 export class ConversationsController {
   constructor(private readonly service: ConversationsService) {}

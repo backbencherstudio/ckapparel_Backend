@@ -255,8 +255,7 @@ async function bootstrap() {
                 return response;
               }
 
-              var key =
-                type === 'su_admin' || 'admin' ? 'admin_token' : 'user_token';
+              var key = type === 'admin' ? 'admin_token' : 'user_token';
 
               var ui = (window as any).ui;
 

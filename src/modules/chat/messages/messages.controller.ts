@@ -64,7 +64,8 @@ function mediaFilter(_: any, file: Express.Multer.File, cb: any) {
 
 @UseGuards(JwtAuthGuard)
 @ApiTags('chat-messages')
-@ApiBearerAuth()
+@ApiBearerAuth('user_token')
+@ApiBearerAuth('admin_token')
 @Controller()
 export class MessagesController {
   constructor(

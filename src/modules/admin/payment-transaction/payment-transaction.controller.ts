@@ -15,7 +15,7 @@ import { Role } from '../../../common/guard/role/role.enum';
 import { Roles } from '../../../common/guard/role/roles.decorator';
 import { Request } from 'express';
 
-@ApiBearerAuth()
+@ApiBearerAuth('admin_token')
 @ApiTags('Admin Payment transaction')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)

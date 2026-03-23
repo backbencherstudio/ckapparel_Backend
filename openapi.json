@@ -15,7 +15,7 @@
                   "example": {
                     "ok": true,
                     "message": "Server is running",
-                    "appName": "Athlete Challenges App",
+                    "appName": "Limitless App",
                     "version": "0.0.1",
                     "env": "development",
                     "uptimeSec": 3600
@@ -123,7 +123,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Get current user profile",
@@ -140,7 +143,7 @@
         "requestBody": {
           "required": true,
           "content": {
-            "multipart/form-data": {
+            "application/json": {
               "schema": {
                 "type": "object",
                 "required": [
@@ -151,19 +154,11 @@
                 "properties": {
                   "name": {
                     "type": "string",
-                    "example": "John Doe"
+                    "example": "Sazedul Islam"
                   },
                   "email": {
                     "type": "string",
-                    "example": "john.doe@example.com"
-                  },
-                  "phone_number": {
-                    "type": "string",
-                    "example": "+1234567890"
-                  },
-                  "date_of_birth": {
-                    "type": "string",
-                    "example": "1990-01-01"
+                    "example": "sazedul.islam@example.com"
                   },
                   "password": {
                     "type": "string",
@@ -172,10 +167,6 @@
                   "type": {
                     "type": "string",
                     "example": "user"
-                  },
-                  "avatar": {
-                    "type": "string",
-                    "format": "binary"
                   }
                 }
               }
@@ -279,7 +270,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Refresh token",
@@ -303,7 +297,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Logout user",
@@ -328,29 +325,13 @@
                     "type": "string",
                     "example": "John Doe"
                   },
+                  "username": {
+                    "type": "string",
+                    "example": "john_doe"
+                  },
                   "country": {
                     "type": "string",
                     "example": "Bangladesh"
-                  },
-                  "state": {
-                    "type": "string",
-                    "example": "Dhaka"
-                  },
-                  "city": {
-                    "type": "string",
-                    "example": "Dhaka"
-                  },
-                  "zip_code": {
-                    "type": "string",
-                    "example": "123456"
-                  },
-                  "phone_number": {
-                    "type": "string",
-                    "example": "+91 9876543210"
-                  },
-                  "address": {
-                    "type": "string",
-                    "example": "Dhaka, Bangladesh"
                   },
                   "gender": {
                     "type": "string",
@@ -359,6 +340,10 @@
                   "date_of_birth": {
                     "type": "string",
                     "example": "2001-11-14"
+                  },
+                  "bio": {
+                    "type": "string",
+                    "example": "Software Engineer"
                   },
                   "avatar": {
                     "type": "string",
@@ -379,7 +364,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Update current user profile",
@@ -583,7 +571,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Change password",
@@ -729,7 +720,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Get current user notifications",
@@ -753,7 +747,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Mark all notifications as read",
@@ -791,7 +788,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Mark notification as read",
@@ -829,7 +829,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Mark notification as unread",
@@ -867,7 +870,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Delete notification",
@@ -1059,7 +1065,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Create FAQ",
@@ -1081,7 +1087,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Get all FAQs",
@@ -1118,7 +1124,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Batch create or update FAQs",
@@ -1156,7 +1162,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Get FAQ by id",
@@ -1202,7 +1208,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Update FAQ",
@@ -1238,7 +1244,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Delete FAQ",
@@ -1275,7 +1281,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Create contact",
@@ -1317,7 +1323,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Get all contacts",
@@ -1355,7 +1361,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Get contact by id",
@@ -1401,7 +1407,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Update contact",
@@ -1437,7 +1443,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Delete contact",
@@ -1507,7 +1513,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Create or update website info",
@@ -1529,7 +1535,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Get website info",
@@ -1553,7 +1559,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Get all payment transactions",
@@ -1591,7 +1597,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Get payment transaction by id",
@@ -1627,7 +1633,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Delete payment transaction",
@@ -1664,7 +1670,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Create admin-managed user",
@@ -1714,7 +1720,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Get all users",
@@ -1752,7 +1758,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Approve user",
@@ -1790,7 +1796,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Reject user",
@@ -1828,7 +1834,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Get user by id",
@@ -1874,7 +1880,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Update user",
@@ -1910,7 +1916,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Delete user",
@@ -1934,7 +1940,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Get all admin notifications",
@@ -1956,7 +1962,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Delete all notifications",
@@ -1994,7 +2000,7 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
           }
         ],
         "summary": "Delete notification",
@@ -2099,7 +2105,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Start trial subscription",
@@ -2136,7 +2145,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Create product and price",
@@ -2173,7 +2185,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Add payment card",
@@ -2197,7 +2212,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Get current user subscription status",
@@ -2221,7 +2239,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Get all plans",
@@ -2248,7 +2269,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Cancel current subscription",
@@ -2288,7 +2312,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Suggest users for chat and member picker",
@@ -2319,7 +2346,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Block a user for DM messaging",
@@ -2348,7 +2378,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Unblock a previously blocked user",
@@ -2378,7 +2411,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Create or return a DM conversation",
@@ -2445,7 +2481,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Create a group conversation",
@@ -2465,7 +2504,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "List group conversations for current user",
@@ -2504,7 +2546,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "List my conversations",
@@ -2535,7 +2580,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Get unread count for a conversation",
@@ -2588,7 +2636,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Mark conversation as read",
@@ -2644,7 +2695,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Add members to a group conversation (admin only)",
@@ -2673,7 +2727,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Get group members",
@@ -2737,7 +2794,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Set role for a group member (admin only)",
@@ -2778,7 +2838,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Remove member from group (admin only)",
@@ -2825,7 +2888,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Clear conversation history for current user only",
@@ -2879,7 +2945,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "List messages in a conversation (cursor pagination)",
@@ -2944,7 +3013,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Search messages by keyword",
@@ -3046,7 +3118,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Upload media and send message",
@@ -3077,7 +3152,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Delete a message for current user permissions scope",
@@ -3131,7 +3209,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "List image/video/audio messages in a conversation",
@@ -3185,7 +3266,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "List file messages in a conversation",
@@ -3236,7 +3320,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Start call for a conversation",
@@ -3267,7 +3354,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Join active call in a conversation",
@@ -3298,7 +3388,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Leave active call",
@@ -3329,7 +3422,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "End active call for a conversation",
@@ -3360,7 +3456,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "Issue LiveKit token for current user in conversation",
@@ -3380,7 +3479,10 @@
         },
         "security": [
           {
-            "bearer": []
+            "admin_token": []
+          },
+          {
+            "user_token": []
           }
         ],
         "summary": "RTC service health check",
@@ -3391,14 +3493,14 @@
     }
   },
   "info": {
-    "title": "Athlete Challenges App API",
-    "description": "Athlete Challenges App API documentation | Maintainer: Sazedul Islam | Contact: sazedul.bdcalling@gmail.com",
+    "title": "Limitless App API",
+    "description": "Limitless App API documentation | Maintainer: Sazedul Islam | Contact: sazedul.bdcalling@gmail.com",
     "version": "1.0.0",
     "contact": {}
   },
   "tags": [
     {
-      "name": "Athlete Challenges App",
+      "name": "Limitless App",
       "description": ""
     }
   ],
@@ -3428,7 +3530,7 @@
           "email": {
             "type": "string",
             "description": "The user email",
-            "example": "john.doe@example.com"
+            "example": "sazedul.islam@example.com"
           }
         },
         "required": [
@@ -3442,7 +3544,7 @@
           "email": {
             "type": "string",
             "description": "The email of the user",
-            "example": "john.doe@example.com"
+            "example": "sazedul.islam@example.com"
           },
           "password": {
             "type": "string",

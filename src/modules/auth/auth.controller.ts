@@ -51,7 +51,8 @@ export class AuthController {
     description:
       'Returns authenticated user profile data from the access token context.',
   })
-  @ApiBearerAuth()
+  @ApiBearerAuth('user_token')
+  @ApiBearerAuth('admin_token')
   @ApiOkResponse({ description: 'User profile fetched successfully.' })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
   @UseGuards(JwtAuthGuard)
@@ -77,34 +78,22 @@ export class AuthController {
     description:
       'Creates a pending registration and sends OTP to the email. Frontend should call /register/verify after receiving OTP.',
   })
-  @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
       type: 'object',
       required: ['name', 'email', 'password'],
       properties: {
-        name: { type: 'string', example: 'John Doe' },
-        email: { type: 'string', example: 'john.doe@example.com' },
-        phone_number: { type: 'string', example: '+1234567890' },
-        date_of_birth: { type: 'string', example: '1990-01-01' },
+        name: { type: 'string', example: 'Sazedul Islam' },
+        email: { type: 'string', example: 'sazedul.islam@example.com' },
         password: { type: 'string', example: 'password123' },
         type: { type: 'string', example: 'user' },
-        avatar: { type: 'string', format: 'binary' },
       },
     },
   })
   @ApiOkResponse({ description: 'OTP sent successfully.' })
   @ApiBadRequestResponse({ description: 'Invalid registration input.' })
   @Post('register/request')
-  @UseInterceptors(
-    FileInterceptor('avatar', {
-      storage: memoryStorage(),
-    }),
-  )
-  async requestRegistration(
-    @Body() data: CreateUserDto,
-    @UploadedFile() avatar?: Express.Multer.File,
-  ) {
+  async requestRegistration(@Body() data: CreateUserDto) {
     try {
       if (!data.name) {
         throw new HttpException('Name not provided', HttpStatus.BAD_REQUEST);
@@ -122,11 +111,8 @@ export class AuthController {
       const response = await this.authService.requestRegistration({
         name: data.name,
         email: data.email,
-        phone_number: data.phone_number,
-        date_of_birth: data.date_of_birth,
         password: data.password,
         type: data.type,
-        avatar: avatar,
       });
 
       return response;
@@ -172,61 +158,6 @@ export class AuthController {
     }
   }
 
-  // @ApiOperation({ summary: 'Register a user' })
-  // @Post('register')
-
-  // @UseInterceptors(
-  //   FileInterceptor('avatar', {
-  //     storage: memoryStorage(),
-  //   }),
-  // )
-  // async create(
-  //   @Body() data: CreateUserDto,
-
-  //   @UploadedFile() avatar?: Express.Multer.File,
-  // ) {
-  //   try {
-  //     const name = data.name;
-  //     const email = data.email;
-  //     const password = data.password;
-  //     const type = data.type;
-  //     const avatarFile = avatar;
-
-  //     console.log('hello', avatarFile);
-
-  //     if (!name) {
-  //       throw new HttpException('Name not provided', HttpStatus.UNAUTHORIZED);
-  //     }
-
-  //     if (!email) {
-  //       throw new HttpException('Email not provided', HttpStatus.UNAUTHORIZED);
-  //     }
-  //     if (!password) {
-  //       throw new HttpException(
-  //         'Password not provided',
-  //         HttpStatus.UNAUTHORIZED,
-  //       );
-  //     }
-
-  //     const response = await this.authService.register({
-  //       name: name,
-  //       email: email,
-  //       password: password,
-  //       type: type,
-  //       avatar: avatarFile,
-  //     });
-
-  //     return response;
-  //   } catch (error) {
-  //     return {
-  //       success: false,
-  //       message: error.message,
-  //     };
-  //   }
-  // }
-
-  // login user
-
   @ApiOperation({
     summary: 'Login user',
     description:
@@ -270,7 +201,8 @@ export class AuthController {
     description:
       'Issues a new access token using an existing valid refresh token.',
   })
-  @ApiBearerAuth()
+  @ApiBearerAuth('user_token')
+  @ApiBearerAuth('admin_token')
   @ApiBody({ type: RefreshTokenDto })
   @ApiOkResponse({ description: 'Token refreshed successfully.' })
   @ApiUnauthorizedResponse({ description: 'Invalid user token context.' })
@@ -278,7 +210,10 @@ export class AuthController {
   @Post('refresh-token')
   async refreshToken(@Req() req: Request, @Body() body: RefreshTokenDto) {
     try {
+      console.log('hit');
       const user_id = req.user.userId;
+
+      console.log('Refresh token request for user_id:', user_id);
 
       const response = await this.authService.refreshToken(
         user_id,
@@ -298,7 +233,8 @@ export class AuthController {
     summary: 'Logout user',
     description: 'Revokes refresh token for current authenticated user.',
   })
-  @ApiBearerAuth()
+  @ApiBearerAuth('user_token')
+  @ApiBearerAuth('admin_token')
   @ApiOkResponse({ description: 'Logged out successfully.' })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
   @UseGuards(JwtAuthGuard)
@@ -322,21 +258,19 @@ export class AuthController {
     description:
       'Updates profile fields for authenticated user. Avatar should be sent as multipart file.',
   })
-  @ApiBearerAuth()
+  @ApiBearerAuth('user_token')
+  @ApiBearerAuth('admin_token')
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
         name: { type: 'string', example: 'John Doe' },
+        username: { type: 'string', example: 'john_doe' },
         country: { type: 'string', example: 'Bangladesh' },
-        state: { type: 'string', example: 'Dhaka' },
-        city: { type: 'string', example: 'Dhaka' },
-        zip_code: { type: 'string', example: '123456' },
-        phone_number: { type: 'string', example: '+91 9876543210' },
-        address: { type: 'string', example: 'Dhaka, Bangladesh' },
         gender: { type: 'string', example: 'male' },
         date_of_birth: { type: 'string', example: '2001-11-14' },
+        bio: { type: 'string', example: 'Software Engineer' },
         avatar: { type: 'string', format: 'binary' },
       },
     },
@@ -519,7 +453,8 @@ export class AuthController {
     summary: 'Change password',
     description: 'Changes password for currently authenticated user.',
   })
-  @ApiBearerAuth()
+  @ApiBearerAuth('user_token')
+  @ApiBearerAuth('admin_token')
   @ApiBody({
     schema: {
       type: 'object',
@@ -582,7 +517,8 @@ export class AuthController {
     summary: 'Request email change',
     description: 'Sends verification token/code for changing account email.',
   })
-  @ApiBearerAuth()
+  @ApiBearerAuth('user_token')
+  @ApiBearerAuth('admin_token')
   @ApiBody({
     schema: {
       type: 'object',
@@ -620,7 +556,8 @@ export class AuthController {
     summary: 'Confirm email change',
     description: 'Applies email change using verification token/code.',
   })
-  @ApiBearerAuth()
+  @ApiBearerAuth('user_token')
+  @ApiBearerAuth('admin_token')
   @ApiBody({
     schema: {
       type: 'object',
@@ -670,7 +607,8 @@ export class AuthController {
     summary: 'Generate 2FA secret',
     description: 'Returns 2FA setup secret/QR payload for authenticator apps.',
   })
-  @ApiBearerAuth()
+  @ApiBearerAuth('user_token')
+  @ApiBearerAuth('admin_token')
   @ApiOkResponse({ description: '2FA secret generated.' })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
   @UseGuards(JwtAuthGuard)
@@ -692,7 +630,8 @@ export class AuthController {
     summary: 'Verify 2FA code',
     description: 'Verifies one-time token generated by authenticator app.',
   })
-  @ApiBearerAuth()
+  @ApiBearerAuth('user_token')
+  @ApiBearerAuth('admin_token')
   @ApiBody({
     schema: {
       type: 'object',
@@ -724,7 +663,8 @@ export class AuthController {
     summary: 'Enable 2FA',
     description: 'Enables two-factor authentication for current user.',
   })
-  @ApiBearerAuth()
+  @ApiBearerAuth('user_token')
+  @ApiBearerAuth('admin_token')
   @ApiOkResponse({ description: '2FA enabled.' })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
   @UseGuards(JwtAuthGuard)
@@ -746,7 +686,8 @@ export class AuthController {
     summary: 'Disable 2FA',
     description: 'Disables two-factor authentication for current user.',
   })
-  @ApiBearerAuth()
+  @ApiBearerAuth('user_token')
+  @ApiBearerAuth('admin_token')
   @ApiOkResponse({ description: '2FA disabled.' })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
   @UseGuards(JwtAuthGuard)

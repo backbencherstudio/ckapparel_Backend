@@ -13,7 +13,8 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { GetUser } from '../../auth/decorators/get-user.decorator';
 
 @ApiTags('Notification')
-@ApiBearerAuth()
+@ApiBearerAuth('user_token')
+@ApiBearerAuth('admin_token')
 @UseGuards(JwtAuthGuard)
 @Controller('notifications')
 export class NotificationController {

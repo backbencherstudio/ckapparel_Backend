@@ -53,6 +53,7 @@ model User {
   password   String? @db.VarChar(255)
   domain     String? @unique
   avatar     String?
+  bio        String? @db.Text
 
   phone_number  String?
   country       String?

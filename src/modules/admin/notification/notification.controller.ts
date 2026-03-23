@@ -15,7 +15,7 @@ import { RolesGuard } from '../../../common/guard/role/roles.guard';
 import { JwtAuthGuard } from '../../../modules/auth/guards/jwt-auth.guard';
 import { Request } from 'express';
 
-@ApiBearerAuth()
+@ApiBearerAuth('admin_token')
 @ApiTags('Admin Notification')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)

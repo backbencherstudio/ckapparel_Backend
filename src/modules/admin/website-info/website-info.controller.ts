@@ -29,7 +29,7 @@ import { RolesGuard } from '../../../common/guard/role/roles.guard';
 import { JwtAuthGuard } from '../../../modules/auth/guards/jwt-auth.guard';
 import { Role } from '../../../common/guard/role/role.enum';
 
-@ApiBearerAuth()
+@ApiBearerAuth('admin_token')
 @ApiTags('Admin Website Info')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)

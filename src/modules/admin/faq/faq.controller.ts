@@ -26,7 +26,7 @@ import { Roles } from '../../../common/guard/role/roles.decorator';
 import { Role } from '../../../common/guard/role/role.enum';
 import { RolesGuard } from '../../../common/guard/role/roles.guard';
 
-@ApiBearerAuth()
+@ApiBearerAuth('admin_token')
 @ApiTags('Admin Faq')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)

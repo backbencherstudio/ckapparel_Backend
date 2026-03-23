@@ -14,7 +14,8 @@ import { GetUser } from 'src/modules/auth/decorators/get-user.decorator';
 import { RealtimeGateway } from '../realtime/realtime.gateway';
 
 @ApiTags('chat-rtc')
-@ApiBearerAuth()
+@ApiBearerAuth('user_token')
+@ApiBearerAuth('admin_token')
 @Controller('rtc')
 export class RtcController {
   constructor(

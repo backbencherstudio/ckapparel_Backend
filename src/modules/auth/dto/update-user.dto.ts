@@ -12,45 +12,17 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
 
   @IsOptional()
   @ApiProperty({
+    description: 'Username or handle',
+    example: 'john_doe',
+  })
+  username?: string;
+
+  @IsOptional()
+  @ApiProperty({
     description: 'Country',
     example: 'Bangladesh',
   })
   country?: string;
-
-  @IsOptional()
-  @ApiProperty({
-    description: 'State',
-    example: 'Dhaka',
-  })
-  state?: string;
-
-  @IsOptional()
-  @ApiProperty({
-    description: 'City',
-    example: 'Dhaka',
-  })
-  city?: string;
-
-  @IsOptional()
-  @ApiProperty({
-    description: 'Zip code',
-    example: '123456',
-  })
-  zip_code?: string;
-
-  @IsOptional()
-  @ApiProperty({
-    description: 'Phone number',
-    example: '+91 9876543210',
-  })
-  phone_number?: string;
-
-  @IsOptional()
-  @ApiProperty({
-    description: 'Address',
-    example: 'Dhaka, Bangladesh',
-  })
-  address?: string;
 
   @IsOptional()
   @ApiProperty({
@@ -65,6 +37,13 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
     example: '14/11/2001',
   })
   date_of_birth?: string;
+
+  @IsOptional()
+  @ApiProperty({
+    description: 'bio',
+    example: 'Software Engineer',
+  })
+  bio?: string;
 
   @IsOptional()
   @ApiProperty({

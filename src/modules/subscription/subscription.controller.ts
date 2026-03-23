@@ -17,7 +17,8 @@ import { GetUser } from '../auth/decorators/get-user.decorator';
 @ApiTags('subscription')
 @Controller('subscription')
 @UseGuards(JwtAuthGuard)
-@ApiBearerAuth()
+@ApiBearerAuth('user_token')
+@ApiBearerAuth('admin_token')
 export class SubscriptionController {
   constructor(private readonly subscriptionService: SubscriptionService) {}
 

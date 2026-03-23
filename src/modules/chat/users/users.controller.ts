@@ -21,7 +21,8 @@ import { GetUser } from 'src/modules/auth/decorators/get-user.decorator';
 
 @UseGuards(JwtAuthGuard)
 @ApiTags('chat-users')
-@ApiBearerAuth()
+@ApiBearerAuth('user_token')
+@ApiBearerAuth('admin_token')
 @Controller('users')
 export class UsersController {
   constructor(private users: UsersService) {}

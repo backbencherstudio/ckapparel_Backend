@@ -201,13 +201,10 @@ export class AuthService {
         select: {
           id: true,
           name: true,
+          username: true,
           email: true,
           status: true,
           avatar: true,
-          address: true,
-          phone_number: true,
-          city: true,
-          state: true,
           country: true,
           type: true,
           gender: true,
@@ -248,19 +245,13 @@ export class AuthService {
   async requestRegistration({
     name,
     email,
-    phone_number,
-    date_of_birth,
     password,
     type,
-    avatar,
   }: {
     name: string;
     email: string;
     password: string;
-    phone_number?: string;
     type?: string;
-    date_of_birth?: string;
-    avatar?: Express.Multer.File;
   }) {
     try {
       // Check if email already exists
@@ -288,12 +279,8 @@ export class AuthService {
       const registrationData = {
         name,
         email,
-        phone_number,
-        date_of_birth,
         password,
         type,
-        avatarBuffer: avatar?.buffer ? avatar.buffer.toString('base64') : null,
-        avatarOriginalName: avatar?.originalname || null,
       };
 
       console.log('Storing registration data for:', email);
@@ -356,47 +343,12 @@ export class AuthService {
 
       const registrationData = JSON.parse(registrationDataJson);
 
-      // Upload avatar if exists
-      let mediaUrl: string | undefined = undefined;
-
-      if (
-        registrationData.avatarBuffer &&
-        registrationData.avatarOriginalName
-      ) {
-        try {
-          const buffer = Buffer.from(registrationData.avatarBuffer, 'base64');
-          const safeName = registrationData.avatarOriginalName
-            .toLowerCase()
-            .replace(/[^a-z0-9.\s-_]/g, '')
-            .replace(/\s+/g, '-')
-            .replace(/-+/g, '-');
-
-          const fileName = `${StringHelper.randomString()}-${safeName}`;
-
-          await SazedStorage.put(
-            `${appConfig().storageUrl.avatar}/${fileName}`,
-            buffer,
-          );
-
-          mediaUrl = SazedStorage.url(
-            encodeURI(`${appConfig().storageUrl.avatar}/${fileName}`),
-          );
-        } catch (error) {
-          console.error('Failed to upload avatar:', error);
-        }
-      }
-
       // Create user
       const user = await UserRepository.createUser({
         name: registrationData.name,
         email: registrationData.email,
-        phone_number: registrationData.phone_number,
-        date_of_birth: registrationData.date_of_birth
-          ? DateHelper.format(registrationData.date_of_birth)
-          : undefined,
         password: registrationData.password,
         type: registrationData.type,
-        avatar: mediaUrl,
       });
 
       console.log('User creation result:', user);
@@ -449,8 +401,7 @@ export class AuthService {
 
       return {
         success: true,
-        message:
-          'Registration completed successfully. Please setup your profile.',
+        message: 'Registration completed successfully.',
         authorization: loginResponse.authorization,
         type: loginResponse.type,
       };
@@ -471,29 +422,40 @@ export class AuthService {
       if (updateUserDto.name) {
         data.name = updateUserDto.name;
       }
-      if (updateUserDto.phone_number) {
-        data.phone_number = updateUserDto.phone_number;
+      if (updateUserDto.username) {
+        // check if username already exist for another user
+        const usernameExist = await UserRepository.exist({
+          field: 'username',
+          value: String(updateUserDto.username),
+        });
+        if (usernameExist) {
+          throw new BadRequestException('Username already exists');
+        }
+
+        data.username = updateUserDto.username;
       }
       if (updateUserDto.country) {
         data.country = updateUserDto.country;
-      }
-      if (updateUserDto.state) {
-        data.state = updateUserDto.state;
-      }
-      if (updateUserDto.city) {
-        data.city = updateUserDto.city;
-      }
-      if (updateUserDto.zip_code) {
-        data.zip_code = updateUserDto.zip_code;
-      }
-      if (updateUserDto.address) {
-        data.address = updateUserDto.address;
       }
       if (updateUserDto.gender) {
         data.gender = updateUserDto.gender;
       }
       if (updateUserDto.date_of_birth) {
         data.date_of_birth = DateHelper.format(updateUserDto.date_of_birth);
+      }
+      if (updateUserDto.bio) {
+        data.bio = updateUserDto.bio;
+      }
+
+      // calculate age from date_of_birth and if age is less than 13 then throw error
+      if (updateUserDto.date_of_birth) {
+        const age = DateHelper.calculateAge(updateUserDto.date_of_birth);
+        if (age < 13) {
+          throw new BadRequestException(
+            'You must be at least 13 years old to update your date of birth.',
+          );
+        }
+        // Note: age is calculated for validation only, not stored in database
       }
 
       let mediaUrl: string | undefined;

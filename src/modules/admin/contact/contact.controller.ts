@@ -16,6 +16,7 @@ import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiBody,
+  ApiExcludeController,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
@@ -33,6 +34,7 @@ import { RolesGuard } from '../../../common/guard/role/roles.guard';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)
 @Controller('admin/contact')
+@ApiExcludeController() // Hide from Swagger docs
 export class ContactController {
   constructor(private readonly contactService: ContactService) {}
 
@@ -59,9 +61,15 @@ export class ContactController {
 
   @ApiOperation({
     summary: 'Get all contacts',
-    description: 'Returns contact submissions with optional search and status filtering.',
+    description:
+      'Returns contact submissions with optional search and status filtering.',
   })
-  @ApiQuery({ name: 'q', required: false, description: 'Search text.', example: 'john' })
+  @ApiQuery({
+    name: 'q',
+    required: false,
+    description: 'Search text.',
+    example: 'john',
+  })
   @ApiQuery({
     name: 'status',
     required: false,
@@ -94,7 +102,11 @@ export class ContactController {
     summary: 'Get contact by id',
     description: 'Returns a single contact submission by id.',
   })
-  @ApiParam({ name: 'id', description: 'Contact id.', example: 'cm8q1n1f50000kq3g7d9h2zab' })
+  @ApiParam({
+    name: 'id',
+    description: 'Contact id.',
+    example: 'cm8q1n1f50000kq3g7d9h2zab',
+  })
   @ApiOkResponse({ description: 'Contact fetched successfully.' })
   @ApiBadRequestResponse({ description: 'Invalid contact id.' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })
@@ -115,7 +127,11 @@ export class ContactController {
     summary: 'Update contact',
     description: 'Updates an existing contact submission by id.',
   })
-  @ApiParam({ name: 'id', description: 'Contact id.', example: 'cm8q1n1f50000kq3g7d9h2zab' })
+  @ApiParam({
+    name: 'id',
+    description: 'Contact id.',
+    example: 'cm8q1n1f50000kq3g7d9h2zab',
+  })
   @ApiBody({ type: UpdateContactDto })
   @ApiOkResponse({ description: 'Contact updated successfully.' })
   @ApiBadRequestResponse({ description: 'Invalid contact id or payload.' })
@@ -140,7 +156,11 @@ export class ContactController {
     summary: 'Delete contact',
     description: 'Deletes a contact submission by id.',
   })
-  @ApiParam({ name: 'id', description: 'Contact id.', example: 'cm8q1n1f50000kq3g7d9h2zab' })
+  @ApiParam({
+    name: 'id',
+    description: 'Contact id.',
+    example: 'cm8q1n1f50000kq3g7d9h2zab',
+  })
   @ApiOkResponse({ description: 'Contact deleted successfully.' })
   @ApiBadRequestResponse({ description: 'Invalid contact id.' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })

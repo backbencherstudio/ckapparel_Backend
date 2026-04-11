@@ -5,6 +5,9 @@ import { WebsiteInfoModule } from './website-info/website-info.module';
 import { PaymentTransactionModule } from './payment-transaction/payment-transaction.module';
 import { UserModule } from './user/user.module';
 import { NotificationModule } from './notification/notification.module';
+import { ChallengesModule } from './challenges/challenges.module';
+import { SupportPlanModule } from './support-plan/support-plan.module';
+import { ProfileModule } from './profile/profile.module';
 
 @Module({
   imports: [
@@ -14,6 +17,11 @@ import { NotificationModule } from './notification/notification.module';
     PaymentTransactionModule,
     UserModule,
     NotificationModule,
+    ChallengesModule,
+    SupportPlanModule,
+    ProfileModule,
   ],
+  providers: [],
+  exports: [ChallengesModule],
 })
 export class AdminModule {}

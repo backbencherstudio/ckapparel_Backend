@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiExcludeEndpoint,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
@@ -53,6 +54,7 @@ export class UsersController {
   }
 
   @Post(':id/block')
+  @ApiExcludeEndpoint()
   @ApiOperation({ summary: 'Block a user for DM messaging' })
   @ApiParam({
     name: 'id',
@@ -65,6 +67,7 @@ export class UsersController {
   }
 
   @Delete(':id/block')
+  @ApiExcludeEndpoint()
   @ApiOperation({ summary: 'Unblock a previously blocked user' })
   @ApiParam({
     name: 'id',

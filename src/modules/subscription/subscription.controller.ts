@@ -5,6 +5,7 @@ import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiBody,
+  ApiExcludeController,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -19,6 +20,7 @@ import { GetUser } from '../auth/decorators/get-user.decorator';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth('user_token')
 @ApiBearerAuth('admin_token')
+@ApiExcludeController() // Hide from Swagger docs 
 export class SubscriptionController {
   constructor(private readonly subscriptionService: SubscriptionService) {}
 
@@ -53,7 +55,9 @@ export class SubscriptionController {
     },
   })
   @ApiOkResponse({ description: 'Trial subscription started successfully.' })
-  @ApiBadRequestResponse({ description: 'Invalid plan ID or trial not allowed.' })
+  @ApiBadRequestResponse({
+    description: 'Invalid plan ID or trial not allowed.',
+  })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
   @Post('start-trial')
   startTrial(@GetUser() user, @Body('planId') planId: string) {
@@ -81,7 +85,9 @@ export class SubscriptionController {
   })
   @ApiBody({ type: AddCardDto })
   @ApiOkResponse({ description: 'Card added successfully.' })
-  @ApiBadRequestResponse({ description: 'Invalid card token or product reference.' })
+  @ApiBadRequestResponse({
+    description: 'Invalid card token or product reference.',
+  })
   @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
   @Post('add/cards')
   addCard(@Req() req, @Body() addCardDto: AddCardDto) {

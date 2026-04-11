@@ -15,6 +15,7 @@ import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiBody,
+  ApiExcludeController,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
@@ -31,6 +32,7 @@ import { RolesGuard } from '../../../common/guard/role/roles.guard';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)
 @Controller('admin/faq')
+@ApiExcludeController() // Hide from Swagger docs
 export class FaqController {
   constructor(private readonly faqService: FaqService) {}
 

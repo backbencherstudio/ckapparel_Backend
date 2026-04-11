@@ -20,13 +20,12 @@ export class SeedCommand extends CommandRunner {
       console.log(`Prisma Env: ${process.env.PRISMA_ENV}`);
       console.log('Seeding started...');
 
-      // begin transaaction
-      await this.prisma.$transaction(async ($tx) => {
-        await this.roleSeed();
-        await this.permissionSeed();
-        await this.userSeed();
-        await this.permissionRoleSeed();
-      });
+      // Seed in deterministic order and keep this command rerunnable.
+      await this.plantypesSeed();
+      await this.roleSeed();
+      await this.permissionSeed();
+      await this.userSeed();
+      await this.permissionRoleSeed();
 
       console.log('Seeding done.');
     } catch (error) {
@@ -36,18 +35,28 @@ export class SeedCommand extends CommandRunner {
 
   //---- user section ----
   async userSeed() {
-    // default admin user
-    const systemUser = await UserRepository.createSuAdminUser({
-      username: appConfig().defaultUser.system.username,
-      email: appConfig().defaultUser.system.email,
-      password: appConfig().defaultUser.system.password,
+    const defaultAdminEmail = appConfig().defaultUser.system.email;
+
+    const existingSystemUser = await this.prisma.user.findUnique({
+      where: { email: defaultAdminEmail },
+      select: { id: true },
     });
 
-    await this.prisma.roleUser.create({
+    // default admin user
+    const systemUser =
+      existingSystemUser ||
+      (await UserRepository.createSuAdminUser({
+        username: appConfig().defaultUser.system.username,
+        email: defaultAdminEmail,
+        password: appConfig().defaultUser.system.password,
+      }));
+
+    await this.prisma.roleUser.createMany({
       data: {
         user_id: systemUser.id,
         role_id: '1',
       },
+      skipDuplicates: true,
     });
   }
 
@@ -102,6 +111,7 @@ export class SeedCommand extends CommandRunner {
 
     await this.prisma.permission.createMany({
       data: permissions,
+      skipDuplicates: true,
     });
   }
 
@@ -117,6 +127,7 @@ export class SeedCommand extends CommandRunner {
     }
     await this.prisma.permissionRole.createMany({
       data: adminPermissionRoleArray,
+      skipDuplicates: true,
     });
 
     // ---normal user---
@@ -139,6 +150,7 @@ export class SeedCommand extends CommandRunner {
     }
     await this.prisma.permissionRole.createMany({
       data: userPermissionRoleArray,
+      skipDuplicates: true,
     });
   }
 
@@ -156,6 +168,45 @@ export class SeedCommand extends CommandRunner {
           name: 'user',
         },
       ],
+      skipDuplicates: true,
     });
+  }
+
+  async plantypesSeed() {
+    const planTypes = [
+      {
+        id: '1',
+        name: 'Nutrition Plans',
+        description:
+          'Customized meal plans and nutrition strategies tailored to your specific challenge and goals.',
+      },
+      {
+        id: '2',
+        name: 'Route Planning',
+        description:
+          'Detailed route maps, elevation profiles, and checkpoint information for your challenge.',
+      },
+      {
+        id: '3',
+        name: 'Training Plans',
+        description:
+          'Progressive training programs for all levels, designed to prepare you for your specific challenge and goals.',
+      },
+      {
+        id: '4',
+        name: 'Transportation and Logistics',
+        description:
+          'Logistics support including vehiclerecommendations for epic, unsupported challenges.',
+      },
+    ];
+
+    // Keep seed deterministic across environments.
+    await this.prisma.planType.deleteMany({});
+    await this.prisma.planType.createMany({
+      data: planTypes,
+    });
+
+    const count = await this.prisma.planType.count();
+    console.log(`Plan types seeded: ${count}`);
   }
 }

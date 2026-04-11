@@ -79,6 +79,21 @@ export class MessagesService {
 
     if (!conv) throw new Error('Conversation not found');
 
+    // Conversation-wide block uses archivedAt on memberships.
+    // If the sender membership is archived, sending is disabled.
+    const senderMembership = await this.prisma.membership.findFirst({
+      where: {
+        conversationId,
+        userId,
+        deletedAt: null,
+      },
+      select: { archivedAt: true },
+    });
+
+    if (!senderMembership || senderMembership.archivedAt) {
+      throw new ForbiddenException('This conversation is blocked for messaging');
+    }
+
     if (file) {
       const safeOriginalName = (file.originalname || 'file')
         .trim()
@@ -500,5 +515,46 @@ export class MessagesService {
       select: { id: true, status: true, createdAt: true },
     });
     return { ok: true, report };
+  }
+
+  async blockConversation(conversationId: string, userId: string) {
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: {
+        id: true,
+        type: true,
+      },
+    });
+
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found');
+    }
+
+    if (conversation.type !== ConversationType.GROUP) {
+      throw new BadRequestException('Only group conversations can be blocked');
+    }
+
+    await this.conv.requireAdmin(conversationId, userId);
+
+    const now = new Date();
+    const result = await this.prisma.membership.updateMany({
+      where: {
+        conversationId,
+        deletedAt: null,
+        archivedAt: null,
+      },
+      data: {
+        archivedAt: now,
+        updatedAt: now,
+      },
+    });
+
+    return {
+      ok: true,
+      conversationId,
+      blockedBy: userId,
+      blockedAt: now,
+      participantsAffected: result.count,
+    };
   }
 }

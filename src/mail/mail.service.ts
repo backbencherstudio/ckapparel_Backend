@@ -4,6 +4,29 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { MailerService } from '@nestjs-modules/mailer';
 import appConfig from '../config/app.config';
 
+export interface SendQuotationRequestEmailParams {
+  challengeTitle: string;
+  supportNeeded: string;
+  userEmail: string;
+  userName?: string | null;
+  phoneNumber?: string | null;
+  quotationId: string;
+}
+
+export interface SendQuotationReplyEmailParams {
+  to: string;
+  fullName: string;
+  message: string;
+  subject?: string;
+  challengeTitle: string;
+  quotationId: string;
+  attachment?: {
+    filename: string;
+    contentType: string;
+    contentBase64: string;
+  };
+}
+
 @Injectable()
 export class MailService {
   constructor(
@@ -76,6 +99,62 @@ export class MailService {
       });
     } catch (error) {
       console.log(error);
+    }
+  }
+
+  async sendQuotationRequestEmail(params: SendQuotationRequestEmailParams) {
+    try {
+      const from = `${process.env.APP_NAME} <${appConfig().mail.from}>`;
+      const to =
+        process.env.MAIL_QUOTATION_TO ||
+        process.env.MAIL_ADMIN_TO ||
+        appConfig().mail.from;
+      const subject = `New quotation request - ${params.challengeTitle}`;
+
+      await this.queue.add('sendQuotationRequestEmail', {
+        to,
+        from,
+        subject,
+        template: 'quotation-request.ejs',
+        context: {
+          challengeTitle: params.challengeTitle,
+          supportNeeded: params.supportNeeded,
+          userEmail: params.userEmail,
+          userName: params.userName || 'Not provided',
+          phoneNumber: params.phoneNumber || 'Not provided',
+          quotationId: params.quotationId,
+          submittedAt: new Date().toISOString(),
+          appName: process.env.APP_NAME,
+        },
+      });
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  }
+
+  async sendQuotationReplyEmail(params: SendQuotationReplyEmailParams) {
+    try {
+      const from = `${process.env.APP_NAME} <${appConfig().mail.from}>`;
+      const subject = params.subject || 'Reply to your quotation request';
+
+      await this.queue.add('sendQuotationReplyEmail', {
+        to: params.to,
+        from,
+        subject,
+        template: 'quotation-reply.ejs',
+        context: {
+          fullName: params.fullName,
+          message: params.message,
+          challengeTitle: params.challengeTitle,
+          quotationId: params.quotationId,
+          appName: process.env.APP_NAME,
+        },
+        attachment: params.attachment,
+      });
+    } catch (error) {
+      console.log(error);
+      throw error;
     }
   }
 }

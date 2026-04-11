@@ -50,9 +50,42 @@ export class MailProcessor extends WorkerHost {
           this.logger.log('Sending verification link');
           await this.mailerService.sendMail({
             to: job.data.to,
+            from: job.data.from,
             subject: job.data.subject,
             template: job.data.template,
             context: job.data.context,
+          });
+          break;
+        case 'sendQuotationRequestEmail':
+          this.logger.log('Sending quotation request notification');
+          await this.mailerService.sendMail({
+            to: job.data.to,
+            from: job.data.from,
+            subject: job.data.subject,
+            template: job.data.template,
+            context: job.data.context,
+          });
+          break;
+        case 'sendQuotationReplyEmail':
+          this.logger.log('Sending quotation reply email');
+          await this.mailerService.sendMail({
+            to: job.data.to,
+            from: job.data.from,
+            subject: job.data.subject,
+            template: job.data.template,
+            context: job.data.context,
+            attachments: job.data.attachment
+              ? [
+                  {
+                    filename: job.data.attachment.filename,
+                    content: Buffer.from(
+                      job.data.attachment.contentBase64,
+                      'base64',
+                    ),
+                    contentType: job.data.attachment.contentType,
+                  },
+                ]
+              : undefined,
           });
           break;
         default:

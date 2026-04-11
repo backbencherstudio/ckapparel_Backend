@@ -2,6 +2,7 @@ import { Controller, Get, Param } from '@nestjs/common';
 import { FaqService } from './faq.service';
 import {
   ApiBadRequestResponse,
+  ApiExcludeController,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
@@ -10,6 +11,7 @@ import {
 
 @ApiTags('Faq')
 @Controller('faq')
+@ApiExcludeController() // Hide from Swagger docs
 export class FaqController {
   constructor(private readonly faqService: FaqService) {}
 

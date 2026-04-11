@@ -11,6 +11,7 @@ import { JwtService } from '@nestjs/jwt';
 import { InjectRedis } from '@nestjs-modules/ioredis';
 import Redis from 'ioredis';
 import { Prisma } from '@prisma/client';
+const countries = require('i18n-iso-countries');
 
 //internal imports
 import appConfig from '../../config/app.config';
@@ -25,6 +26,9 @@ import { StripePayment } from '../../common/lib/Payment/stripe/StripePayment';
 import { StringHelper } from '../../common/helper/string.helper';
 import { CreateUserDto } from './dto/create-user.dto';
 import { NotificationRepository } from '../../common/repository/notification/notification.repository';
+
+// Register English locale once for country name lookups.
+countries.registerLocale(require('i18n-iso-countries/langs/en.json'));
 
 @Injectable()
 export class AuthService {
@@ -52,145 +56,42 @@ export class AuthService {
     }
   }
 
-  // async register({
-  //   name,
-  //   email,
-  //   password,
-  //   type,
-  //   avatar,
-  // }: {
-  //   name: string;
-  //   email: string;
-  //   password: string;
-  //   type?: string;
-  //   avatar?: Express.Multer.File;
-  // }) {
-  //   try {
-  //     // Check if email already exist
-  //     const userEmailExist = await UserRepository.exist({
-  //       field: 'email',
-  //       value: String(email),
-  //     });
+  private normalizeCountryName(value: string): string {
+    return value.trim().toLowerCase().replace(/\s+/g, ' ');
+  }
 
-  //     if (userEmailExist) {
-  //       // Throwing HttpException allows you to set a specific status code (e.g., 409 Conflict)
-  //       throw new HttpException('Email already exists', HttpStatus.CONFLICT);
-  //     }
+  private countryCodeToFlagSvgUrl(alpha2Code: string): string {
+    return `https://flagcdn.com/${alpha2Code.toLowerCase()}.svg`;
+  }
 
-  //     let mediaUrl: string | undefined = undefined;
+  private resolveCountryFlag(countryName?: string): string | null {
+    if (!countryName) {
+      return null;
+    }
 
-  //     if (avatar?.buffer) {
-  //       try {
-  //         const safeName = avatar.originalname
-  //           .toLowerCase()
-  //           .replace(/[^a-z0-9.\s-_]/g, '') // keep only valid chars
-  //           .replace(/\s+/g, '-') // spaces → -
-  //           .replace(/-+/g, '-'); // remove double dashes
+    const normalizedInput = this.normalizeCountryName(countryName);
+    if (!normalizedInput) {
+      return null;
+    }
 
-  //         const fileName = `${StringHelper.randomString()}-${safeName}`;
+    let alpha2Code = countries.getAlpha2Code(normalizedInput, 'en');
 
-  //         await SazedStorage.put(
-  //           `${appConfig().storageUrl.avatar}/${fileName}`,
-  //           avatar.buffer,
-  //         );
+    if (!alpha2Code) {
+      const countryNames = countries.getNames('en', {
+        select: 'official',
+      }) as Record<string, string>;
+      const matchedEntry = Object.entries(countryNames).find(
+        ([, name]) => this.normalizeCountryName(name) === normalizedInput,
+      );
+      alpha2Code = matchedEntry?.[0] ?? undefined;
+    }
 
-  //         mediaUrl = SazedStorage.url(
-  //           encodeURI(`${appConfig().storageUrl.avatar}/${fileName}`),
-  //         );
-  //       } catch (error) {
-  //         console.error('Failed to upload avatar:', error);
-  //         throw new Error(`Failed to upload avatar: ${error.message}`);
-  //       }
-  //     }
+    if (!alpha2Code) {
+      return null;
+    }
 
-  //     const user = await UserRepository.createUser({
-  //       name: name,
-  //       email: email,
-  //       password: password,
-  //       type: type,
-  //       avatar: mediaUrl,
-  //     });
-
-  //     if (user == null && user.success == false) {
-  //       return {
-  //         success: false,
-  //         message: 'Failed to create account',
-  //       };
-  //     }
-
-  //     // create stripe customer account
-  //     const stripeCustomer = await StripePayment.createCustomer({
-  //       user_id: user.data.id,
-  //       email: email,
-  //       name: name,
-  //     });
-
-  //     if (stripeCustomer) {
-  //       await this.prisma.user.update({
-  //         where: {
-  //           id: user.data.id,
-  //         },
-  //         data: {
-  //           billing_id: stripeCustomer.id,
-  //         },
-  //       });
-  //     }
-
-  //     // ----------------------------------------------------
-  //     // // create otp code
-  //     // const token = await UcodeRepository.createToken({
-  //     //   userId: user.data.id,
-  //     //   isOtp: true,
-  //     // });
-
-  //     // // send otp code to email
-  //     // await this.mailService.sendOtpCodeToEmail({
-  //     //   email: email,
-  //     //   name: name,
-  //     //   otp: token,
-  //     // });
-
-  //     // return {
-  //     //   success: true,
-  //     //   message: 'We have sent an OTP code to your email',
-  //     // };
-
-  //     // ----------------------------------------------------
-
-  //     // // Generate verification token
-  //     // const token = await UcodeRepository.createVerificationToken({
-  //     //   userId: user.data.id,
-  //     //   email: email,
-  //     // });
-
-  //     // // Send verification email with token
-  //     // await this.mailService.sendVerificationLink({
-  //     //   email,
-  //     //   name: email,
-  //     //   token: token.token,
-  //     //   type: type,
-  //     // });
-
-  //     return {
-  //       success: true,
-  //       message: 'Account created successfully',
-  //     };
-  //   } catch (error) {
-  //     return {
-  //       success: false,
-  //       message: error.message,
-  //     };
-  //   }
-  // }
-
-  // //   {
-  // //   "name": "Sazedul Islam",
-  // //   "first_name": "Sazedul",
-  // //   "last_name": "Islam",
-  // //   "email": "sazedulislam9126@gmail.com",
-  // //   "password": "123456789",
-  // //   "type": "user"
-  // // }
+    return this.countryCodeToFlagSvgUrl(alpha2Code);
+  }
 
   async me(userId: string) {
     try {
@@ -206,8 +107,10 @@ export class AuthService {
           status: true,
           avatar: true,
           country: true,
+          flag: true,
           type: true,
           gender: true,
+          age: true,
           date_of_birth: true,
           created_at: true,
         },
@@ -220,21 +123,41 @@ export class AuthService {
         };
       }
 
-      if (user) {
-        return {
-          success: true,
-          data: user,
-        };
-      } else {
-        return {
-          success: false,
-          message: 'User not found',
-        };
-      }
+      // Get challenge participation statistics
+      const [joinedCount, inProgressCount, completedCount, createdCount] = await Promise.all([
+        this.prisma.challengeParticipation.count({
+          where: { user_id: userId, status: 'JOINED' },
+        }),
+        this.prisma.challengeParticipation.count({
+          where: { user_id: userId, status: 'IN_PROGRESS' },
+        }),
+        this.prisma.challengeParticipation.count({
+          where: { user_id: userId, status: 'COMPLETED' },
+        }),
+        this.prisma.challenges.count({
+          where: { creator: { id: userId } },
+        }),
+      ]);
+
+      const stats = {
+        joined: joinedCount,
+        inProgress: inProgressCount,
+        completed: completedCount,
+        created: createdCount,
+      };
+
+      return {
+        success: true,
+        message: 'User profile retrieved successfully',
+        data: {
+          ...user,
+          stats,
+        },
+      };
     } catch (error) {
       return {
         success: false,
-        message: error.message,
+        message: error?.message || 'Failed to retrieve user profile',
       };
     }
   }
@@ -273,7 +196,7 @@ export class AuthService {
       }
 
       // Generate OTP
-      const otp = Math.floor(1000 + Math.random() * 9000).toString();
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
       // Store registration data temporarily in Redis (expires in 15 minutes)
       const registrationData = {
@@ -436,6 +359,12 @@ export class AuthService {
       }
       if (updateUserDto.country) {
         data.country = updateUserDto.country;
+
+        // Resolve country flag SVG URL from country name and store in database
+        const countryFlag = this.resolveCountryFlag(updateUserDto.country);
+        if (countryFlag) {
+          data.flag = countryFlag;
+        }
       }
       if (updateUserDto.gender) {
         data.gender = updateUserDto.gender;
@@ -446,16 +375,14 @@ export class AuthService {
       if (updateUserDto.bio) {
         data.bio = updateUserDto.bio;
       }
-
-      // calculate age from date_of_birth and if age is less than 13 then throw error
-      if (updateUserDto.date_of_birth) {
-        const age = DateHelper.calculateAge(updateUserDto.date_of_birth);
-        if (age < 13) {
+      if (updateUserDto.age !== undefined && updateUserDto.age !== null) {
+        const parsedAge = Number(updateUserDto.age);
+        if (!Number.isInteger(parsedAge) || parsedAge < 0) {
           throw new BadRequestException(
-            'You must be at least 13 years old to update your date of birth.',
+            'Age must be a valid non-negative integer',
           );
         }
-        // Note: age is calculated for validation only, not stored in database
+        data.age = parsedAge;
       }
 
       let mediaUrl: string | undefined;
@@ -649,6 +576,11 @@ export class AuthService {
         60 * 60 * 24 * 7,
       );
 
+      await this.createAuthNotification(
+        user.id,
+        'New login detected on your account via Google.',
+      );
+
       // create stripe customer account id
       try {
         const stripeCustomer = await StripePayment.createCustomer({
@@ -710,6 +642,11 @@ export class AuthService {
         refreshToken,
         'EX',
         60 * 60 * 24 * 7,
+      );
+
+      await this.createAuthNotification(
+        user.id,
+        'New login detected on your account via Apple.',
       );
 
       // create stripe customer account id
@@ -802,6 +739,11 @@ export class AuthService {
       }
 
       await this.redis.del(`refresh_token:${user_id}`);
+
+      await this.createAuthNotification(
+        user_id,
+        'You have logged out from your account.',
+      );
 
       return {
         success: true,
@@ -1027,9 +969,14 @@ export class AuthService {
           otp: token,
         });
 
+        await this.createAuthNotification(
+          user.id,
+          'A new email verification code has been sent to your email address.',
+        );
+
         return {
           success: true,
-          message: 'We have sent a verification code to your email',
+          message: 'We have resent a verification code to your email',
         };
       } else {
         return {

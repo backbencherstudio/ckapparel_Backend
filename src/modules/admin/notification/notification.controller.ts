@@ -1,8 +1,9 @@
-import { Controller, Get, Param, Delete, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Param, Delete, UseGuards } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiForbiddenResponse,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
@@ -13,13 +14,13 @@ import { Role } from '../../../common/guard/role/role.enum';
 import { Roles } from '../../../common/guard/role/roles.decorator';
 import { RolesGuard } from '../../../common/guard/role/roles.guard';
 import { JwtAuthGuard } from '../../../modules/auth/guards/jwt-auth.guard';
-import { Request } from 'express';
+import { GetUser } from '../../../modules/auth/decorators/get-user.decorator';
 
 @ApiBearerAuth('admin_token')
-@ApiTags('Admin Notification')
+@ApiTags('Admin Notifications')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)
-@Controller('admin/notification')
+@Controller('admin/notifications')
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
@@ -29,20 +30,10 @@ export class NotificationController {
   })
   @ApiOkResponse({ description: 'Notifications fetched successfully.' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })
+  @ApiForbiddenResponse({ description: 'Forbidden - Admin only.' })
   @Get()
-  async findAll(@Req() req: Request) {
-    try {
-      const user_id = req.user.userId;
-
-      const notification = await this.notificationService.findAll(user_id);
-
-      return notification;
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-      };
-    }
+  async findAll(@GetUser('userId') userId: string) {
+    return this.notificationService.findAll(userId);
   }
 
   @ApiOperation({
@@ -58,19 +49,10 @@ export class NotificationController {
   @ApiOkResponse({ description: 'Notification deleted successfully.' })
   @ApiBadRequestResponse({ description: 'Invalid notification id.' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })
+  @ApiForbiddenResponse({ description: 'Forbidden - Admin only.' })
   @Delete(':id')
-  async remove(@Req() req: Request, @Param('id') id: string) {
-    try {
-      const user_id = req.user.userId;
-      const notification = await this.notificationService.remove(id, user_id);
-
-      return notification;
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-      };
-    }
+  async remove(@GetUser('userId') userId: string, @Param('id') id: string) {
+    return this.notificationService.remove(id, userId);
   }
 
   @ApiOperation({
@@ -79,18 +61,9 @@ export class NotificationController {
   })
   @ApiOkResponse({ description: 'All notifications deleted successfully.' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })
+  @ApiForbiddenResponse({ description: 'Forbidden - Admin only.' })
   @Delete()
-  async removeAll(@Req() req: Request) {
-    try {
-      const user_id = req.user.userId;
-      const notification = await this.notificationService.removeAll(user_id);
-
-      return notification;
-    } catch (error) {
-      return {
-        success: false,
-        message: error.message,
-      };
-    }
+  async removeAll(@GetUser('userId') userId: string) {
+    return this.notificationService.removeAll(userId);
   }
 }

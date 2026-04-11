@@ -16,6 +16,7 @@ import {
   ApiBearerAuth,
   ApiBody,
   ApiConsumes,
+  ApiExcludeController,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -34,6 +35,7 @@ import { Role } from '../../../common/guard/role/role.enum';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)
 @Controller('admin/website-info')
+@ApiExcludeController() // Hide from Swagger docs
 export class WebsiteInfoController {
   constructor(private readonly websiteInfoService: WebsiteInfoService) {}
 

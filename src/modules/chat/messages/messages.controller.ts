@@ -18,6 +18,8 @@ import {
   ApiBody,
   ApiConsumes,
   ApiExcludeEndpoint,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
@@ -25,6 +27,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { MessageKind } from '@prisma/client';
 import { MessagesService } from './messages.service';
 import { UseInterceptors, UploadedFile } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -109,22 +112,55 @@ export class MessagesController {
     );
   }
 
-  // @Post('conversations/:id/messages')
-  // sendMessage(
-  //   @Param('id') conversationId: string,
-  //   @GetUser() user: any,
-  //   @Body() dto: SendMessageDto,
-  // ) {
-  //   return this.service.sendMessage(
-  //     conversationId,
-  //     user.userId,
-  //     dto.kind,
-  //     dto.content,
-  //   );
-  // }
+  @Post('conversations/:id/messages')
+  @ApiOperation({
+    summary: 'Send a plain text message in a conversation',
+    description:
+      'Production flow: use this endpoint for messages in a conversation. ' +
+      'For pure realtime text-only messages, use websocket event "message:send" on namespace "/ws". ' +
+      'This endpoint creates and stores the message in DB and now also emits realtime "message:new" to the conversation room.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Conversation id',
+    example: 'cmmlk8qn20002v8xsglb2csrh',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        text: {
+          type: 'string',
+          example: 'Hello team',
+        },
+      },
+      required: ['text'],
+    },
+  })
+  @ApiOkResponse({
+    description: 'Text message sent successfully.',
+  })
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+  sendTextMessage(
+    @Param('id') conversationId: string,
+    @GetUser() user: any,
+    @Body() body: { text: string },
+  ) {
+    if (!body?.text || !String(body.text).trim()) {
+      throw new BadRequestException('text is required');
+    }
+
+    return this.service.sendMessage(
+      conversationId,
+      user.userId,
+      MessageKind.TEXT,
+      { text: String(body.text).trim() },
+    );
+  }
 
   // /messages/search?q=hello&conversationId=...&take=20&skip=0
   @Get('messages/search')
+  @ApiExcludeEndpoint()
   @ApiOperation({ summary: 'Search messages by keyword' })
   @ApiOkResponse({ description: 'Search results fetched successfully.' })
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
@@ -139,6 +175,7 @@ export class MessagesController {
   }
 
   @Post('conversations/:id/messages/upload')
+  @ApiExcludeEndpoint()
   @ApiOperation({
     summary: 'Upload media and send message',
     description:
@@ -246,6 +283,8 @@ export class MessagesController {
   @Delete('messages/:messageId')
   @ApiOperation({
     summary: 'Delete a message for current user permissions scope',
+    description:
+      'Deletes a message by id. User can only delete messages they have permission to delete (e.g. their own messages, or any messages if they are admin).',
   })
   @ApiParam({
     name: 'messageId',
@@ -282,6 +321,7 @@ export class MessagesController {
 
   // --- media & files ---
   @Get('conversations/:id/media')
+  @ApiExcludeEndpoint()
   @ApiOperation({
     summary: 'List image/video/audio messages in a conversation',
   })
@@ -318,6 +358,7 @@ export class MessagesController {
   }
 
   @Get('conversations/:id/files')
+  @ApiExcludeEndpoint()
   @ApiOperation({ summary: 'List file messages in a conversation' })
   @ApiParam({
     name: 'id',
@@ -349,5 +390,41 @@ export class MessagesController {
       query.cursor,
       query.take,
     );
+  }
+
+  @ApiOperation({
+    summary: 'Block group conversation messaging (admin only)',
+    description:
+      'Admin-only action for GROUP conversations. This blocks messaging for all current participants. ' +
+      'After blocking, message sending is denied for both HTTP APIs and websocket realtime sends.',
+  })
+  @Post('conversations/:id/block')
+  @ApiParam({
+    name: 'id',
+    description: 'Conversation id',
+    example: 'cmmlk8qn20002v8xsglb2csrh',
+  })
+  @ApiBearerAuth('admin_token')
+  @ApiOkResponse({
+    description: 'Conversation messaging blocked for all participants.',
+    schema: {
+      example: {
+        ok: true,
+        conversationId: 'cmmlk8qn20002v8xsglb2csrh',
+        blockedBy: 'cmmmysivw0000v8fgdk4animh',
+        blockedAt: '2026-04-04T10:30:00.000Z',
+        participantsAffected: 14,
+      },
+    },
+  })
+  @ApiForbiddenResponse({
+    description: 'Admin only or requester is not a member of this conversation.',
+  })
+  @ApiBadRequestResponse({
+    description: 'Only group conversations can be blocked.',
+  })
+  @ApiNotFoundResponse({ description: 'Conversation not found.' })
+  blockConversation(@Param('id') conversationId: string, @GetUser() user: any) {
+    return this.service.blockConversation(conversationId, user.userId);
   }
 }

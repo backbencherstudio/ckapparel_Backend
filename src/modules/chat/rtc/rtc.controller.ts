@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiBody,
+  ApiExcludeController,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
@@ -17,6 +18,7 @@ import { RealtimeGateway } from '../realtime/realtime.gateway';
 @ApiBearerAuth('user_token')
 @ApiBearerAuth('admin_token')
 @Controller('rtc')
+@ApiExcludeController() // Hide from Swagger docs
 export class RtcController {
   constructor(
     private readonly rtcService: RtcService,
@@ -27,7 +29,11 @@ export class RtcController {
   @Post('conversations/:id/start')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Start call for a conversation' })
-  @ApiParam({ name: 'id', description: 'Conversation id', example: 'cmmlk8qn20002v8xsglb2csrh' })
+  @ApiParam({
+    name: 'id',
+    description: 'Conversation id',
+    example: 'cmmlk8qn20002v8xsglb2csrh',
+  })
   @ApiBody({
     schema: {
       type: 'object',
@@ -49,7 +55,8 @@ export class RtcController {
       kind,
     );
 
-    const memberIds = await this.rtcService.getConversationMemberIds(conversationId);
+    const memberIds =
+      await this.rtcService.getConversationMemberIds(conversationId);
     const recipients = memberIds.filter((id) => id !== user.userId);
     this.realtimeGateway.emitCallIncoming(
       conversationId,
@@ -65,7 +72,11 @@ export class RtcController {
   @Post('conversations/:id/join')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Join active call in a conversation' })
-  @ApiParam({ name: 'id', description: 'Conversation id', example: 'cmmlk8qn20002v8xsglb2csrh' })
+  @ApiParam({
+    name: 'id',
+    description: 'Conversation id',
+    example: 'cmmlk8qn20002v8xsglb2csrh',
+  })
   @ApiOkResponse({ description: 'Joined call successfully.' })
   async joinCall(@GetUser() user: any, @Param('id') conversationId: string) {
     const resp = await this.rtcService.joinCall(conversationId, user.userId);
@@ -76,24 +87,32 @@ export class RtcController {
   @Post('conversations/:id/leave')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Leave active call' })
-  @ApiParam({ name: 'id', description: 'Conversation id', example: 'cmmlk8qn20002v8xsglb2csrh' })
+  @ApiParam({
+    name: 'id',
+    description: 'Conversation id',
+    example: 'cmmlk8qn20002v8xsglb2csrh',
+  })
   @ApiOkResponse({ description: 'Left call successfully.' })
   async leaveCall(@GetUser() user: any, @Param('id') conversationId: string) {
     const resp = await this.rtcService.leaveCall(conversationId, user.userId);
     return resp;
   }
 
-
   // End call (any member for now)
   @Post('conversations/:id/end')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'End active call for a conversation' })
-  @ApiParam({ name: 'id', description: 'Conversation id', example: 'cmmlk8qn20002v8xsglb2csrh' })
+  @ApiParam({
+    name: 'id',
+    description: 'Conversation id',
+    example: 'cmmlk8qn20002v8xsglb2csrh',
+  })
   @ApiOkResponse({ description: 'Call ended successfully.' })
   async endCall(@GetUser() user: any, @Param('id') conversationId: string) {
     const resp = await this.rtcService.endCall(conversationId, user.userId);
 
-    const memberIds = await this.rtcService.getConversationMemberIds(conversationId);
+    const memberIds =
+      await this.rtcService.getConversationMemberIds(conversationId);
     const recipients = memberIds.filter((id) => id !== user.userId);
     this.realtimeGateway.emitCallEnded(conversationId, user.userId, recipients);
 
@@ -103,8 +122,14 @@ export class RtcController {
   // Convenience: issue token bound to conversation call (auto-start if not active)
   @Post('conversations/:id/token')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Issue LiveKit token for current user in conversation' })
-  @ApiParam({ name: 'id', description: 'Conversation id', example: 'cmmlk8qn20002v8xsglb2csrh' })
+  @ApiOperation({
+    summary: 'Issue LiveKit token for current user in conversation',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Conversation id',
+    example: 'cmmlk8qn20002v8xsglb2csrh',
+  })
   @ApiOkResponse({ description: 'Call token issued successfully.' })
   async issueConversationToken(
     @GetUser() user: any,

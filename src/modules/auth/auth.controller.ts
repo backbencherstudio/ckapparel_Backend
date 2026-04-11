@@ -269,7 +269,7 @@ export class AuthController {
         username: { type: 'string', example: 'john_doe' },
         country: { type: 'string', example: 'Bangladesh' },
         gender: { type: 'string', example: 'male' },
-        date_of_birth: { type: 'string', example: '2001-11-14' },
+        age: { type: 'number', example: 30 },
         bio: { type: 'string', example: 'Software Engineer' },
         avatar: { type: 'string', format: 'binary' },
       },
@@ -313,7 +313,7 @@ export class AuthController {
       type: 'object',
       required: ['email'],
       properties: {
-        email: { type: 'string', example: 'user@example.com' },
+        email: { type: 'string', example: 'sazedul.islam@example.com' },
       },
     },
   })
@@ -339,6 +339,16 @@ export class AuthController {
   @ApiOperation({
     summary: 'Verify email',
     description: 'Verifies email using OTP/token sent to the user email.',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['email', 'otp'],
+      properties: {
+        email: { type: 'string', example: 'sazedul.islam@example.com' },
+        otp: { type: 'string', example: '123456' },
+      },
+    },
   })
   @ApiOkResponse({ description: 'Email verified successfully.' })
   @ApiBadRequestResponse({ description: 'Email/token missing or invalid.' })
@@ -375,7 +385,7 @@ export class AuthController {
       type: 'object',
       required: ['email'],
       properties: {
-        email: { type: 'string', example: 'user@example.com' },
+        email: { type: 'string', example: 'sazedul.islam@example.com' },
       },
     },
   })
@@ -407,7 +417,7 @@ export class AuthController {
       type: 'object',
       required: ['email', 'otp', 'new_password'],
       properties: {
-        email: { type: 'string', example: 'user@example.com' },
+        email: { type: 'string', example: 'sazedul.islam@example.com' },
         otp: { type: 'string', example: '123456' },
         new_password: { type: 'string', example: 'NewPassword123!' },
       },
@@ -714,6 +724,7 @@ export class AuthController {
       'Starts Google OAuth redirect flow. Frontend should navigate browser to this URL, not call it via XHR.',
   })
   @ApiOkResponse({ description: 'Redirects to Google OAuth consent screen.' })
+  @ApiExcludeEndpoint() // Hide from Swagger docs since it's a redirect callback
   @Get('google')
   @UseGuards(AuthGuard('google'))
   async googleLogin(): Promise<any> {
@@ -728,6 +739,7 @@ export class AuthController {
   @ApiOkResponse({
     description: 'Google login completed and auth payload returned.',
   })
+  @ApiExcludeEndpoint() // Hide from Swagger docs since it's a redirect callback
   @Get('google/redirect')
   @UseGuards(AuthGuard('google'))
   async googleAuthRedirect(@Req() req, @Res() res: Response) {
@@ -753,6 +765,7 @@ export class AuthController {
       'Starts Apple OAuth redirect flow. Frontend should navigate browser to this URL, not call it via XHR.',
   })
   @ApiOkResponse({ description: 'Redirects to Apple sign-in page.' })
+  @ApiExcludeEndpoint() // Hide from Swagger docs since it's a redirect callback
   @Get('apple')
   @UseGuards(AppleAuthGuard)
   async appleAuth(@Req() req) {
@@ -767,8 +780,10 @@ export class AuthController {
   @ApiOkResponse({
     description: 'Apple login completed and auth payload returned.',
   })
+  @ApiExcludeEndpoint() // Hide from Swagger docs since it's a redirect callback
   @Get('apple/redirect')
   @UseGuards(AppleAuthGuard)
+  @ApiExcludeEndpoint() // Hide from Swagger docs since it's a redirect callback
   async appleAuthRedirect(@Req() req, @Res() res: Response) {
     const { user, loginResponse } = req.user;
 

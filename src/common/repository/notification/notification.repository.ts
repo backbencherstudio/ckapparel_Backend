@@ -12,6 +12,53 @@ const redis = new Redis({
 });
 
 export class NotificationRepository {
+  private static readonly settingKeys = {
+    push: 'notification.push.enabled',
+    sponsorship: 'notification.sponsorship.enabled',
+    chat: 'notification.chat.enabled',
+  } as const;
+
+  private static parseBoolean(value: string | null | undefined, fallback = true) {
+    if (value === null || value === undefined) return fallback;
+    const normalized = value.trim().toLowerCase();
+    if (['true', '1', 'yes', 'on'].includes(normalized)) return true;
+    if (['false', '0', 'no', 'off'].includes(normalized)) return false;
+    return fallback;
+  }
+
+  private static resolveToggleKey(type: string | undefined) {
+    if (type === 'chat' || type === 'message') return this.settingKeys.chat;
+    if (type === 'sponsorship') return this.settingKeys.sponsorship;
+    return this.settingKeys.push;
+  }
+
+  private static async isNotificationAllowed(
+    receiverId: string | undefined,
+    toggleKey: string,
+  ) {
+    if (!receiverId) return true;
+
+    const setting = await prisma.setting.findUnique({
+      where: { key: toggleKey },
+      select: { id: true, default_value: true },
+    });
+
+    if (!setting) return true;
+
+    const userSetting = await prisma.userSetting.findFirst({
+      where: {
+        user_id: receiverId,
+        setting_id: setting.id,
+      },
+      select: { value: true },
+    });
+
+    return this.parseBoolean(
+      userSetting?.value,
+      this.parseBoolean(setting.default_value, true),
+    );
+  }
+
   /**
    * Create a notification
    * @param sender_id - The ID of the user who fired the event
@@ -39,9 +86,19 @@ export class NotificationRepository {
       | 'payment_transaction'
       | 'package'
       | 'blog'
-      | 'auth';
+      | 'auth'
+      | 'challenge'
+      | 'quotation'
+      | 'sponsorship'
+      | 'support';
     entity_id?: string;
   }) {
+    const toggleKey = this.resolveToggleKey(type);
+    const isAllowed = await this.isNotificationAllowed(receiver_id, toggleKey);
+    if (!isAllowed) {
+      return null;
+    }
+
     const notificationEventData = {};
     if (type) {
       notificationEventData['type'] = type;

@@ -57,12 +57,14 @@ model User {
 
   phone_number  String?
   country       String?
+  flag          String?
   state         String?
   city          String?
   address       String?
   zip_code      String?
   gender        String?
   date_of_birth DateTime? @db.Date
+  age           Int?
   lastSeenAt    DateTime? @map("last_seen_at")
 
   // billing id. e.g. stripe customer id
@@ -75,19 +77,19 @@ model User {
   two_factor_secret     String? // secret key for two factor authentication
 
   accounts                  Account[]
-  creator_conversations     Conversation[] @relation("creator")
-  participant_conversations Conversation[] @relation("participant")
-  receiver_messages         Message[]      @relation("receiver")
-  sender_messages           Message[]      @relation("sender")
-  deleted_messages          Message[]      @relation("message_deleted_by")
-  receiver_notifications    Notification[] @relation("receiver")
-  sender_notifications      Notification[] @relation("sender")
+  creator_conversations     Conversation[]    @relation("creator")
+  participant_conversations Conversation[]    @relation("participant")
+  receiver_messages         Message[]         @relation("receiver")
+  sender_messages           Message[]         @relation("sender")
+  deleted_messages          Message[]         @relation("message_deleted_by")
+  receiver_notifications    Notification[]    @relation("receiver")
+  sender_notifications      Notification[]    @relation("sender")
   memberships               Membership[]
-  blocksInitiated           Block[]        @relation("Blocker")
-  blockedBy                 Block[]        @relation("Blocked")
+  blocksInitiated           Block[]           @relation("Blocker")
+  blockedBy                 Block[]           @relation("Blocked")
   callParticipations        CallParticipant[]
-  startedCalls              CallSession[]  @relation("CallStartedBy")
-  reportsFiled              Report[]       @relation("ReportReporter")
+  startedCalls              CallSession[]     @relation("CallStartedBy")
+  reportsFiled              Report[]          @relation("ReportReporter")
 
   user_payment_methods UserPaymentMethod[]
   user_settings        UserSetting[]
@@ -98,8 +100,17 @@ model User {
   payment_transactions PaymentTransaction[]
   paymentMethods       PaymentMethod[]
 
-  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
-  subscriptionId String?
+  subscription            Subscription?            @relation(fields: [subscriptionId], references: [id])
+  subscriptionId          String?
+  challengeParticipations ChallengeParticipation[]
+  challengeLeaderboards   ChallengeLeaderboard[]
+  challengeJourneyLogs    ChallengeJourneyLog[]
+  externalConnections     ExternalConnection[]
+  syncedActivities        SyncedActivity[]
+  challenges_won          Challenges[]             @relation("Challengewinner")
+  challenges_created      Challenges[]             @relation("ChallengeCreator")
+  sponsorships_created    Sponsorship[]            @relation("SponsorshipCreator")
+  quotations              Quotation[]
 
   @@map("users")
 }
@@ -405,11 +416,11 @@ enum ReportStatus {
 
 // message is used for conversation
 model Message {
-  id          String       @id @default(cuid())
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @default(now()) @map("updated_at")
-  deletedAt   DateTime?    @map("deleted_at")
-  readAt      DateTime?    @map("read_at")
+  id        String    @id @default(cuid())
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+  readAt    DateTime? @map("read_at")
 
   status MessageStatus? @default(PENDING)
   kind   MessageKind    @default(TEXT)
@@ -423,18 +434,17 @@ model Message {
   conversationId String?       @map("conversation_id")
   conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
-  attachmentId String?      @map("attachment_id")
-  attachment   Attachment?  @relation(fields: [attachmentId], references: [id])
-  deletedById  String?      @map("deleted_by_id")
-  deletedBy    User?        @relation("message_deleted_by", fields: [deletedById], references: [id])
-  media_Url    String?      @map("media_url")
+  attachmentId String?     @map("attachment_id")
+  attachment   Attachment? @relation(fields: [attachmentId], references: [id])
+  deletedById  String?     @map("deleted_by_id")
+  deletedBy    User?       @relation("message_deleted_by", fields: [deletedById], references: [id])
+  media_Url    String?     @map("media_url")
   content      Json?
   message      String?
   reports      Report[]
 
   @@index([conversationId, createdAt])
   @@index([senderId])
-
   @@map("messages")
 }
 
@@ -465,11 +475,11 @@ model Conversation {
 
   type          ConversationType @default(DM)
   title         String?
-  avatarUrl     String? @map("avatar_url")
-  senderTitle   String? @map("sender_title")
-  receiverTitle String? @map("receiver_title")
-  dmKey         String? @unique @map("dm_key")
-  createdBy     String? @map("created_by")
+  avatarUrl     String?          @map("avatar_url")
+  senderTitle   String?          @map("sender_title")
+  receiverTitle String?          @map("receiver_title")
+  dmKey         String?          @unique @map("dm_key")
+  createdBy     String?          @map("created_by")
 
   creatorId String? @map("creator_id")
   creator   User?   @relation("creator", fields: [creatorId], references: [id])
@@ -480,10 +490,10 @@ model Conversation {
   messages     Message[]
   memberships  Membership[]
   callSessions CallSession[]
+  challenge    Challenges?   @relation("ChallengeConversation")
 
   @@index([type])
   @@index([updatedAt])
-
   @@map("conversations")
 }
 
@@ -564,9 +574,9 @@ model CallParticipant {
 }
 
 model Report {
-  id        String       @id @default(cuid())
-  createdAt DateTime     @default(now()) @map("created_at")
-  updatedAt DateTime     @default(now()) @map("updated_at")
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @map("updated_at")
 
   messageId String  @map("message_id")
   message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
@@ -679,18 +689,682 @@ model UserSetting {
   @@map("user_settings")
 }
 
-// this table stores example
-// model Note {
-//   id                String  @id @default(cuid())
-//   created_at DateTime  @default(now())
-//   updated_at DateTime  @default(now())
-//   deleted_at DateTime?
-//   status     Int?      @default(1) @db.SmallInt
+// Challanges schema
 
-//   title String?
-//   body  String? @db.Text
+// ===== Challenge Enums =====
 
-//   tenant_id Int?
-//   tenant    Organization? @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-//   @@map("posts")
-// }
+enum ChallengePath {
+  ELITE_ATHLETE
+  MONTHLY_CHALLENGE
+  VIRTUAL_ADVENTURE
+  COMMUNITY_CHALLENGE
+}
+
+enum ChallengeCategory {
+  RUNNING
+  CYCLING
+  SWIMMING
+  HIIT
+  OTHER
+}
+
+enum ChallengeDifficulty {
+  EASY
+  MEDIUM
+  HARD
+  CHALLENGING
+  EXPERT
+  EXTREME
+}
+
+enum ChallengeStatus {
+  ACTIVE
+  PENDING
+  COMPLETED
+  REJECTED
+}
+
+enum ParticipationStatus {
+  JOINED
+  IN_PROGRESS
+  COMPLETED
+  PAUSED
+  ABANDONED
+  DISQUALIFIED
+}
+
+enum CheckpointStatus {
+  LOCKED
+  ACTIVE
+  COMPLETED
+  SKIPPED
+}
+
+enum MetricType {
+  DISTANCE_KM
+  ELEVATION_M
+  DURATION_MIN
+  CALORIES
+}
+
+enum FitnessProvider {
+  STRAVA
+  MANUAL
+}
+
+enum SyncedActivityStatus {
+  PENDING
+  PROCESSED
+  IGNORED
+  FAILED
+}
+
+// ===== Main Challenge Model (Clean & Simple) =====
+
+model Challenges {
+  id         String    @id @default(cuid())
+  created_at DateTime  @default(now())
+  updated_at DateTime  @default(now())
+  deleted_at DateTime?
+
+  // Basic Info
+  title       String
+  subtitle    String?
+  description String?         @db.Text
+  status      ChallengeStatus @default(ACTIVE)
+
+  // Classification
+  path       ChallengePath
+  category   ChallengeCategory
+  difficulty ChallengeDifficulty
+
+  // Rules
+  require_device_connection Boolean @default(true)
+  allow_manual_submission   Boolean @default(true)
+  enable_chat               Boolean @default(true)
+  is_active                 Boolean @default(true)
+  is_featured               Boolean @default(false)
+
+  // Limits
+  max_participants       Int?
+  participants_joined    Int? @default(0)
+  participants_completed Int? @default(0)
+
+  // Rewards
+  reward_title       String?
+  reward_description String?
+
+  // Location 
+  challenge_country String?
+
+  // Relations
+  pathConfig     ChallengePathConfig?
+  metrics        ChallengeMetric[]
+  checkpoints    ChallengeCheckpoint[]
+  participations ChallengeParticipation[]
+  leaderboard    ChallengeLeaderboard[]
+  journeyLogs    ChallengeJourneyLog[]
+  routePlans     RoutePlan[]
+
+  // Chat relation 
+  conversationId String?       @unique @map("conversation_id")
+  conversation   Conversation? @relation("ChallengeConversation", fields: [conversationId], references: [id], onDelete: SetNull)
+
+  // winner info
+  winner    User?   @relation("Challengewinner", fields: [winner_id], references: [id], onDelete: SetNull)
+  winner_id String?
+
+  // Creator info
+  created_by String?
+  creator    User?   @relation("ChallengeCreator", fields: [created_by], references: [id], onDelete: SetNull)
+
+  @@index([path, is_active])
+  @@map("challenges")
+}
+
+// ===== Path-Specific Configuration =====
+
+model ChallengePathConfig {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+
+  challenge_id String     @unique
+  challenge    Challenges @relation(fields: [challenge_id], references: [id], onDelete: Cascade)
+
+  // VIRTUAL_ADVENTURE: GPS route, start/end coordinates, waypoints
+  // MONTHLY_CHALLENGE: Simple monthly goal
+  // ELITE_ATHLETE: Tier-based thresholds
+  // COMMUNITY_CHALLENGE: Team aggregation settings
+
+  config_data Json // Path-specific settings stored as JSON
+  // Examples:
+  // VIRTUAL_ADVENTURE: { route_start: {lat, lng}, route_end: {lat, lng}, waypoints: [...], require_gps: true }
+  // MONTHLY_CHALLENGE: { goal_type: "distance_or_elevation", monthly_reset: true }
+  // ELITE_ATHLETE: { tiers: [{name: "Bronze", distance: 50}, {name: "Silver", distance: 100}, ...] }
+  // COMMUNITY_CHALLENGE: { team_based: true, min_team_size: 2, aggregate_metric: "distance" }
+
+  @@map("challenge_path_configs")
+}
+
+// ===== Metrics Definition =====
+
+model ChallengeMetric {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+
+  challenge_id String
+  challenge    Challenges @relation(fields: [challenge_id], references: [id], onDelete: Cascade)
+
+  metric_type   MetricType
+  sequence      Int // Order for display (1 = primary)
+  target_value  Decimal // e.g., 50 km, 1000m elevation, 180 minutes
+  min_threshold Decimal? // Optional minimum threshold
+  is_required   Boolean    @default(true)
+
+  @@unique([challenge_id, metric_type])
+  @@index([challenge_id, sequence])
+  @@map("challenge_metrics")
+}
+
+// ===== Challenge Checkpoints (Simplified) =====
+
+model ChallengeCheckpoint {
+  id         String    @id @default(cuid())
+  created_at DateTime  @default(now())
+  updated_at DateTime  @default(now())
+  deleted_at DateTime?
+
+  challenge_id String
+  challenge    Challenges @relation(fields: [challenge_id], references: [id], onDelete: Cascade)
+
+  // Sequential milestone
+  sequence    Int
+  title       String
+  description String?
+
+  // Checkpoint target metrics (can be subset of challenge metrics)
+  metric_targets Json // { "DISTANCE_KM": 25, "ELEVATION_M": 500 }
+
+  // Rewards & badges
+  reward_title       String?
+  reward_description String?
+  reward_image       String?
+
+  // Checkpoint control
+  is_visible                  Boolean @default(true)
+  is_required                 Boolean @default(true)
+  unlock_after_checkpoint_seq Int? // Unlock this after completing previous checkpoint
+
+  // Strava integration (optional)
+  strava_segment_id String?
+
+  // Relations
+  progress      ChallengeCheckpointProgress[]
+  journeyLogs   ChallengeJourneyLog[]
+  activityLinks ChallengeActivityLink[]
+
+  @@unique([challenge_id, sequence])
+  @@index([challenge_id])
+  @@map("challenge_checkpoints")
+}
+
+// ===== User Participation in Challenges =====
+
+model ChallengeParticipation {
+  id         String    @id @default(cuid())
+  created_at DateTime  @default(now())
+  updated_at DateTime  @default(now())
+  deleted_at DateTime?
+
+  user_id String
+  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  challenge_id String
+  challenge    Challenges @relation(fields: [challenge_id], references: [id], onDelete: Cascade)
+
+  // Status & timeline
+  status           ParticipationStatus @default(JOINED)
+  joined_at        DateTime            @default(now())
+  started_at       DateTime?
+  completed_at     DateTime?
+  last_activity_at DateTime?
+  last_synced_at   DateTime?
+
+  // Connected provider (optional)
+  external_connection_id String?
+  externalConnection     ExternalConnection? @relation(fields: [external_connection_id], references: [id], onDelete: SetNull)
+  source_provider        FitnessProvider?
+
+  // Aggregated progress metrics (computed from checkpoint progresses)
+  progress_percent      Decimal? @default(0)
+  metric_values         Json? // { "DISTANCE_KM": 25.5, "ELEVATION_M": 500, "DURATION_MIN": 120 }
+  active_checkpoint_seq Int?     @default(1)
+
+  // Relations
+  checkpointProgress ChallengeCheckpointProgress[]
+  journeyLogs        ChallengeJourneyLog[]
+  activityLinks      ChallengeActivityLink[]
+
+  @@unique([user_id, challenge_id])
+  @@index([challenge_id, status])
+  @@index([user_id, status])
+  @@map("challenge_participations")
+}
+
+// ===== Leaderboard Tracking =====
+
+model ChallengeLeaderboard {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+
+  challenge_id String
+  challenge    Challenges @relation(fields: [challenge_id], references: [id], onDelete: Cascade)
+
+  user_id String
+  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  // Ranking
+  rank             Int?
+  progress_percent Decimal?
+  metric_values    Json? // { "DISTANCE_KM": 50.2, "ELEVATION_M": 1200, "DURATION_MIN": 240 }
+
+  // Completion
+  finished_at     DateTime?
+  finish_time_sec Int? // Time to complete challenge
+
+  source_provider FitnessProvider?
+
+  @@unique([challenge_id, user_id])
+  @@index([challenge_id, rank])
+  @@map("challenge_leaderboards")
+}
+
+// ===== Journey Logs (Activity Timeline) =====
+
+model ChallengeJourneyLog {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+
+  user_id String
+  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  challenge_id String
+  challenge    Challenges @relation(fields: [challenge_id], references: [id], onDelete: Cascade)
+
+  participation_id String
+  participation    ChallengeParticipation @relation(fields: [participation_id], references: [id], onDelete: Cascade)
+
+  checkpoint_id String?
+  checkpoint    ChallengeCheckpoint? @relation(fields: [checkpoint_id], references: [id], onDelete: SetNull)
+
+  activity_id String?
+  activity    SyncedActivity? @relation(fields: [activity_id], references: [id], onDelete: SetNull)
+
+  // Event info
+  event_type String? // "checkpoint_unlocked", "checkpoint_completed", "activity_linked", "milestone_reached"
+  message    String?
+
+  // Metric change from this activity
+  metric_changes    Json? // { "DISTANCE_KM": 5.2, "ELEVATION_M": 100 }
+  progress_snapshot Decimal? // Progress % at time of log
+
+  source_provider FitnessProvider? @default(MANUAL)
+  metadata        Json?
+
+  @@index([challenge_id, created_at])
+  @@index([user_id, challenge_id])
+  @@map("challenge_journey_logs")
+}
+
+// ===== Checkpoint Progress per User Attempt =====
+
+model ChallengeCheckpointProgress {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+
+  participation_id String
+  participation    ChallengeParticipation @relation(fields: [participation_id], references: [id], onDelete: Cascade)
+
+  checkpoint_id String
+  checkpoint    ChallengeCheckpoint @relation(fields: [checkpoint_id], references: [id], onDelete: Cascade)
+
+  // Status tracking
+  status       CheckpointStatus @default(LOCKED)
+  started_at   DateTime?
+  completed_at DateTime?
+
+  // Current metric values for this checkpoint
+  metric_values Json? // { "DISTANCE_KM": 15.0, "ELEVATION_M": 350 }
+
+  // Which activity completed this checkpoint
+  completed_by_activity_id String?
+
+  source_provider FitnessProvider?
+  metadata        Json?
+
+  // Relations
+  activityLinks ChallengeActivityLink[]
+
+  @@unique([participation_id, checkpoint_id])
+  @@index([checkpoint_id, status])
+  @@map("challenge_checkpoint_progresses")
+}
+
+// ===== External Fitness Provider Integration =====
+
+model ExternalConnection {
+  id         String    @id @default(cuid())
+  created_at DateTime  @default(now())
+  updated_at DateTime  @default(now())
+  deleted_at DateTime?
+
+  user_id String
+  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  // Provider details
+  provider         FitnessProvider
+  provider_user_id String?
+
+  // OAuth tokens
+  access_token     String?   @db.Text
+  refresh_token    String?   @db.Text
+  token_expires_at DateTime?
+  scope            String?
+
+  // Sync status
+  is_active    Boolean   @default(true)
+  last_sync_at DateTime?
+
+  // Webhook (for push updates)
+  webhook_subscription_id String?
+
+  // Additional data
+  metadata Json?
+
+  // Relations
+  syncedActivities        SyncedActivity[]
+  challengeParticipations ChallengeParticipation[]
+
+  @@unique([user_id, provider])
+  @@index([provider, is_active])
+  @@map("external_connections")
+}
+
+// ===== Synced Activities from Providers =====
+
+model SyncedActivity {
+  id         String    @id @default(cuid())
+  created_at DateTime  @default(now())
+  updated_at DateTime  @default(now())
+  deleted_at DateTime?
+
+  user_id String
+  user    User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  external_connection_id String?
+  externalConnection     ExternalConnection? @relation(fields: [external_connection_id], references: [id], onDelete: SetNull)
+
+  // Activity identification
+  provider             FitnessProvider
+  provider_activity_id String // Unique per provider
+
+  name          String?
+  sport_type    String? // "running", "cycling", "swimming", etc.
+  activity_date DateTime
+
+  // Metrics
+  distance_m        Decimal?
+  elevation_gain_m  Decimal?
+  average_speed_mps Decimal?
+  elapsed_time_sec  Int?
+  moving_time_sec   Int?
+
+  // Processing status
+  status       SyncedActivityStatus @default(PENDING)
+  processed_at DateTime?
+
+  // Raw data
+  raw_payload Json?
+
+  // Relations
+  challengeActivityLinks ChallengeActivityLink[]
+  journeyLogs            ChallengeJourneyLog[]
+
+  @@unique([provider, provider_activity_id])
+  @@index([user_id, activity_date])
+  @@index([status, created_at])
+  @@map("synced_activities")
+}
+
+// ===== Activity Links to Challenges =====
+
+model ChallengeActivityLink {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+
+  participation_id String
+  participation    ChallengeParticipation @relation(fields: [participation_id], references: [id], onDelete: Cascade)
+
+  activity_id String
+  activity    SyncedActivity @relation(fields: [activity_id], references: [id], onDelete: Cascade)
+
+  checkpoint_progress_id String?
+  checkpointProgress     ChallengeCheckpointProgress? @relation(fields: [checkpoint_progress_id], references: [id], onDelete: SetNull)
+
+  checkpoint_id String?
+  checkpoint    ChallengeCheckpoint? @relation(fields: [checkpoint_id], references: [id], onDelete: SetNull)
+
+  // Metrics counted from this activity
+  counted_metrics Json? // { "DISTANCE_KM": 5.0, "ELEVATION_M": 100, "DURATION_MIN": 30 }
+
+  is_counted Boolean @default(true)
+
+  @@index([checkpoint_progress_id])
+  @@map("challenge_activity_links")
+}
+
+// ==========================================
+// Support Plans for Challenges 
+// ==========================================
+
+enum PlanCategory {
+  RUNNING
+  CYCLING
+  SWIMMING
+  HIIT
+}
+
+enum TrainingPlansCategory {
+  Beginner
+  Intermediate
+  Advanced
+}
+
+model PlanType {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+
+  name         String
+  description  String?       @db.Text
+  supportPlans SupportPlan[]
+
+  @@index([name])
+  @@map("plan_types")
+}
+
+model SupportPlan {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+  status     Int?     @default(1) @db.SmallInt
+
+  title        String
+  description  String?  @db.Text
+  distance     Decimal? @db.Decimal(10, 2)
+  resource_url String?
+  route_url    String?
+
+  planTypeId String
+  plan_type  PlanType @relation(fields: [planTypeId], references: [id], onDelete: Cascade)
+
+  category              PlanCategory
+  trainingPlansCategory TrainingPlansCategory?
+
+  @@map("support_plans")
+}
+
+// ==========================================
+// Route Planning 
+// ==========================================
+
+model RoutePlan {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+  status     Int?     @default(1) @db.SmallInt
+
+  challenge_id String
+  challenge    Challenges @relation(fields: [challenge_id], references: [id], onDelete: Cascade)
+
+  banner_image_url        String?
+  about_challenge         String?    @db.Text
+  location                String?
+  total_distance          String?
+  average_completion_time String?
+  climate_terrain         String?
+  highest_point           String?
+  dificulty_rating        String?
+  routeDays               RouteDay[]
+
+  @@map("route_plans")
+}
+
+model RouteDay {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+  status     Int?     @default(1) @db.SmallInt
+
+  routePlanId String
+  route_plan  RoutePlan @relation(fields: [routePlanId], references: [id], onDelete: Cascade)
+
+  sequence    Int
+  day_number  String?
+  title       String?
+  description String? @db.Text
+  distance    String?
+
+  @@index([routePlanId, day_number])
+  @@map("route_days")
+}
+
+// ==========================================
+// Sponsorship Hub for Challenges
+// ==========================================
+
+enum SponsorshipStatus {
+  OPEN
+  CLOSED
+  PENDING
+  DECLINED
+}
+
+enum NeedCategory {
+  FOOTWEAR
+  NUTRITION
+  TRANSPORTATION
+  SUPPLIMENTS
+  OTHER
+}
+
+model Sponsorship {
+  id         String            @id @default(cuid())
+  created_at DateTime          @default(now())
+  updated_at DateTime          @default(now())
+  status     SponsorshipStatus @default(PENDING)
+
+  title         String
+  description   String?  @db.Text
+  funding_goal  Decimal? @db.Decimal(15, 2)
+  amount_raised Decimal? @db.Decimal(15, 2)
+
+  challenge_category ChallengeCategory?
+
+  sponsorship_Needs SponsorshipNeeds[]
+
+  creator_id String?
+  creator    User?   @relation("SponsorshipCreator", fields: [creator_id], references: [id], onDelete: SetNull)
+
+  sponsorDetails SponsorDetails[]
+  
+
+  @@map("sponsorships")
+}
+
+model SponsorshipNeeds {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+
+  sponsorship_Id String
+  sponsorship    Sponsorship @relation(fields: [sponsorship_Id], references: [id], onDelete: Cascade)
+
+  need_category    NeedCategory?
+  need_description String?
+
+  @@index([sponsorship_Id])
+  @@map("sponsorship_needs")
+}
+
+model SponsorDetails {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+
+  sponsorship_id String
+  sponsorship    Sponsorship @relation(fields: [sponsorship_id], references: [id], onDelete: Cascade)
+
+  name         String?
+  email        String?
+  phone_number String?
+
+  amount  Decimal? @db.Decimal(15, 2)
+  message String?  @db.Text
+
+  @@index([sponsorship_id])
+  @@map("sponsor_details")
+}
+
+// ===== Quotation Requests =====
+
+model Quotation {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now())
+  deleted_at DateTime?
+
+  user_id String?
+  user    User?   @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  // Form data from user
+  challenge_title    String
+  support_needed     String  @db.Text
+  user_email         String
+  user_name          String?
+  phone_number       String?
+
+  // Admin status
+  status             String? @default("pending") // pending, reviewed, contacted, completed
+  admin_notes        String? @db.Text
+
+  @@index([user_id])
+  @@index([status])
+  @@index([created_at])
+  @@map("quotations")
+}

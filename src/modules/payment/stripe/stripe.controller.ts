@@ -12,6 +12,7 @@ import { Request } from 'express';
 import {
   ApiBadRequestResponse,
   ApiBody,
+  ApiExcludeController,
   ApiHeader,
   ApiOkResponse,
   ApiOperation,
@@ -21,6 +22,7 @@ import { StripeWebhookAckDto } from './dto/stripe-webhook-ack.dto';
 
 @ApiTags('payment-stripe')
 @Controller('payment/stripe')
+@ApiExcludeController() // Hide from Swagger docs
 export class StripeController {
   constructor(private readonly stripeService: StripeService) {}
 
@@ -32,9 +34,9 @@ export class StripeController {
   @ApiHeader({
     name: 'stripe-signature',
     required: true,
-    description: 'Stripe webhook signature header used for payload verification.',
-    example:
-      't=1710000000,v1=3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6',
+    description:
+      'Stripe webhook signature header used for payload verification.',
+    example: 't=1710000000,v1=3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6',
   })
   @ApiBody({
     schema: {
@@ -92,7 +94,9 @@ export class StripeController {
     try {
       return await this.stripeService.handleWebhook(payload, signature);
     } catch (error) {
-      throw new BadRequestException('Invalid Stripe webhook payload or signature');
+      throw new BadRequestException(
+        'Invalid Stripe webhook payload or signature',
+      );
     }
   }
 }

@@ -3,6 +3,7 @@ import { PaymentTransactionService } from './payment-transaction.service';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiExcludeController,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
@@ -20,6 +21,7 @@ import { Request } from 'express';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)
 @Controller('admin/payment-transaction')
+@ApiExcludeController() // Hide from Swagger docs
 export class PaymentTransactionController {
   constructor(
     private readonly paymentTransactionService: PaymentTransactionService,
@@ -27,7 +29,8 @@ export class PaymentTransactionController {
 
   @ApiOperation({
     summary: 'Get all payment transactions',
-    description: 'Returns all payment transactions visible to authenticated admin user.',
+    description:
+      'Returns all payment transactions visible to authenticated admin user.',
   })
   @ApiOkResponse({ description: 'Payment transactions fetched successfully.' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })
@@ -52,7 +55,11 @@ export class PaymentTransactionController {
     summary: 'Get payment transaction by id',
     description: 'Returns one payment transaction by id.',
   })
-  @ApiParam({ name: 'id', description: 'Payment transaction id.', example: 'cm8q1n1f50000kq3g7d9h2zab' })
+  @ApiParam({
+    name: 'id',
+    description: 'Payment transaction id.',
+    example: 'cm8q1n1f50000kq3g7d9h2zab',
+  })
   @ApiOkResponse({ description: 'Payment transaction fetched successfully.' })
   @ApiBadRequestResponse({ description: 'Invalid payment transaction id.' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })
@@ -79,7 +86,11 @@ export class PaymentTransactionController {
     summary: 'Delete payment transaction',
     description: 'Deletes a payment transaction by id.',
   })
-  @ApiParam({ name: 'id', description: 'Payment transaction id.', example: 'cm8q1n1f50000kq3g7d9h2zab' })
+  @ApiParam({
+    name: 'id',
+    description: 'Payment transaction id.',
+    example: 'cm8q1n1f50000kq3g7d9h2zab',
+  })
   @ApiOkResponse({ description: 'Payment transaction deleted successfully.' })
   @ApiBadRequestResponse({ description: 'Invalid payment transaction id.' })
   @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })

@@ -5,12 +5,14 @@ import {
   ApiBadRequestResponse,
   ApiBody,
   ApiCreatedResponse,
+  ApiExcludeController,
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
 
 @ApiTags('Contact')
 @Controller('contact')
+@ApiExcludeController() // Hide from Swagger docs
 export class ContactController {
   constructor(private readonly contactService: ContactService) {}
 

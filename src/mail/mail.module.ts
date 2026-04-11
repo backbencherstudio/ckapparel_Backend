@@ -5,6 +5,7 @@ import { MailService } from './mail.service';
 import appConfig from '../config/app.config';
 import { BullModule } from '@nestjs/bullmq';
 import { MailProcessor } from './processors/mail.processor';
+import { join } from 'path';
 
 @Global()
 @Module({
@@ -25,8 +26,7 @@ import { MailProcessor } from './processors/mail.processor';
         from: appConfig().mail.from,
       },
       template: {
-        // dir: join(__dirname, 'templates'),
-        dir: process.cwd() + '/dist/mail/templates/',
+        dir: join(__dirname, 'templates'),
         // adapter: new HandlebarsAdapter(), // or new PugAdapter() or new EjsAdapter()
         adapter: new EjsAdapter(),
         options: {

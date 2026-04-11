@@ -10,6 +10,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import { SazedStorage } from 'src/common/lib/Disk/SazedStorage';
 import appConfig from 'src/config/app.config';
+import { NotificationRepository } from 'src/common/repository/notification/notification.repository';
 
 @Injectable()
 export class ConversationsService {
@@ -17,6 +18,27 @@ export class ConversationsService {
     private prisma: PrismaService,
     private users: UsersService,
   ) {}
+
+  private async notifyConversation(
+    receiverId: string | undefined,
+    text: string,
+    senderId?: string,
+    conversationId?: string,
+  ) {
+    if (!receiverId) return;
+
+    try {
+      await NotificationRepository.createNotification({
+        sender_id: senderId,
+        receiver_id: receiverId,
+        type: 'message',
+        text,
+        entity_id: conversationId,
+      });
+    } catch (error) {
+      console.error('Failed to create conversation notification:', error);
+    }
+  }
 
   private dmKeyFor(a: string, b: string) {
     return [a, b].sort().join('_');
@@ -32,7 +54,12 @@ export class ConversationsService {
 
   async ensureMember(conversationId: string, userId: string) {
     const m = await this.prisma.membership.findFirst({
-      where: { conversationId, userId },
+      where: {
+        conversationId,
+        userId,
+        deletedAt: null,
+        conversation: { deletedAt: null },
+      },
       select: { id: true },
     });
     if (!m) throw new ForbiddenException('Not a member of this conversation');
@@ -40,7 +67,12 @@ export class ConversationsService {
 
   async requireAdmin(conversationId: string, userId: string) {
     const m = await this.prisma.membership.findFirst({
-      where: { conversationId, userId },
+      where: {
+        conversationId,
+        userId,
+        deletedAt: null,
+        conversation: { deletedAt: null },
+      },
       select: { role: true },
     });
     if (!m) throw new ForbiddenException('Not a member');
@@ -108,6 +140,13 @@ export class ConversationsService {
       include: { memberships: true },
     });
 
+    await this.notifyConversation(
+      otherUserId,
+      `${senderTitle} started a direct conversation with you.`,
+      currentUserId,
+      conversation.id,
+    );
+
     return conversation;
   }
 
@@ -148,7 +187,7 @@ export class ConversationsService {
     }
 
     const uniqueMembers = Array.from(new Set([currentUserId, ...memberIds]));
-    return this.prisma.conversation.create({
+    const group = await this.prisma.conversation.create({
       data: {
         type: ConversationType.GROUP,
         title,
@@ -164,6 +203,22 @@ export class ConversationsService {
       },
       include: { memberships: true },
     });
+
+    const recipients = uniqueMembers.filter((uid) => uid !== currentUserId);
+    if (recipients.length > 0) {
+      await Promise.all(
+        recipients.map((uid) =>
+          this.notifyConversation(
+            uid,
+            `You were added to the group "${title}".`,
+            currentUserId,
+            group.id,
+          ),
+        ),
+      );
+    }
+
+    return group;
   }
 
   // list conversations the user is in
@@ -179,7 +234,14 @@ export class ConversationsService {
   ) {
     const convs = await this.prisma.conversation.findMany({
       where: {
-        memberships: { some: { userId, archivedAt: null } },
+        deletedAt: null,
+        memberships: {
+          some: {
+            userId,
+            archivedAt: null,
+            deletedAt: null,
+          },
+        },
         ...(opts?.from || opts?.to
           ? { updatedAt: { gte: opts?.from, lte: opts?.to } }
           : {}),
@@ -189,6 +251,7 @@ export class ConversationsService {
       skip,
       include: {
         memberships: {
+          where: { deletedAt: null },
           select: {
             userId: true,
             role: true,
@@ -258,11 +321,13 @@ export class ConversationsService {
   async listGroupConversations(userId: string) {
     const groups = await this.prisma.conversation.findMany({
       where: {
+        deletedAt: null,
         type: ConversationType.GROUP,
-        memberships: { some: { userId } },
+        memberships: { some: { userId, deletedAt: null } },
       },
       include: {
         memberships: {
+          where: { deletedAt: null },
           select: {
             userId: true,
             role: true,
@@ -352,6 +417,24 @@ export class ConversationsService {
       })),
       skipDuplicates: true,
     });
+
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { title: true },
+    });
+    const groupName = conversation?.title || 'a group conversation';
+
+    await Promise.all(
+      toAdd.map((uid) =>
+        this.notifyConversation(
+          uid,
+          `You were added to the group "${groupName}".`,
+          currentUserId,
+          conversationId,
+        ),
+      ),
+    );
+
     return { ok: true, added: toAdd };
   }
 
@@ -396,9 +479,23 @@ export class ConversationsService {
     targetUserId: string,
   ) {
     await this.requireAdmin(conversationId, currentUserId);
+
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { title: true },
+    });
+
     await this.prisma.membership.deleteMany({
       where: { conversationId, userId: targetUserId },
     });
+
+    await this.notifyConversation(
+      targetUserId,
+      `You were removed from the group "${conversation?.title || 'conversation'}".`,
+      currentUserId,
+      conversationId,
+    );
+
     return { ok: true };
   }
 
@@ -414,13 +511,31 @@ export class ConversationsService {
       where: { conversationId, userId: targetUserId },
       data: { role },
     });
+
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { title: true },
+    });
+
+    await this.notifyConversation(
+      targetUserId,
+      `Your role was updated to ${role} in "${conversation?.title || 'group conversation'}".`,
+      currentUserId,
+      conversationId,
+    );
+
     return { ok: true };
   }
 
   // get unread count for a conversation
   async unreadFor(conversationId: string, userId: string) {
     const me = await this.prisma.membership.findFirst({
-      where: { conversationId, userId },
+      where: {
+        conversationId,
+        userId,
+        deletedAt: null,
+        conversation: { deletedAt: null },
+      },
       select: { lastReadAt: true },
     });
     if (!me) throw new ForbiddenException('Not a member');
@@ -435,16 +550,234 @@ export class ConversationsService {
   }
 
   //------ clear conversation for me----
-  async clearForUser(conversationId: string, userId: string, upTo?: Date) {
-    await this.ensureMember(conversationId, userId);
-
-    const at = upTo ?? new Date();
-
-    await this.prisma.membership.updateMany({
-      where: { conversationId, userId },
-      data: { clearedAt: at, lastReadAt: at },
+  async clearForUser(conversationId: string, userId: string) {
+    const conversation = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { id: true, deletedAt: true },
     });
 
-    return { ok: true, conversationId, clearedAt: at.toISOString() };
+    if (!conversation || conversation.deletedAt) {
+      throw new BadRequestException('Conversation not found');
+    }
+
+    const membership = await this.prisma.membership.findFirst({
+      where: {
+        conversationId,
+        userId,
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+
+    console.log("conversation members", membership);
+
+
+    if (!conversation || conversation.deletedAt) {
+      throw new BadRequestException('Conversation not found');
+    }
+
+    const clearedAt = new Date();
+
+    await this.prisma.membership.updateMany({
+      where: { conversationId, userId, deletedAt: null },
+      data: { clearedAt, lastReadAt: clearedAt },
+    });
+
+    return {
+      ok: true,
+      conversationId,
+      clearedAll: true,
+      clearedAt: clearedAt.toISOString(),
+    };
+  }
+
+  async updateGroupTitle(
+    conversationId: string,
+    currentUserId: string,
+    title: string,
+  ) {
+    const normalizedTitle = String(title ?? '').trim();
+    if (!normalizedTitle) {
+      throw new BadRequestException('title is required');
+    }
+
+    const conv = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { id: true, type: true, deletedAt: true },
+    });
+
+    if (!conv || conv.deletedAt) {
+      throw new BadRequestException('Conversation not found');
+    }
+
+    if (conv.type !== ConversationType.GROUP) {
+      throw new BadRequestException(
+        'Only group conversations can update title',
+      );
+    }
+
+    await this.requireAdmin(conversationId, currentUserId);
+
+    const updated = await this.prisma.conversation.update({
+      where: { id: conversationId },
+      data: { title: normalizedTitle, updatedAt: new Date() },
+      select: { id: true, title: true, updatedAt: true },
+    });
+
+    const members = await this.prisma.membership.findMany({
+      where: { conversationId, deletedAt: null, userId: { not: currentUserId } },
+      select: { userId: true },
+    });
+
+    await Promise.all(
+      members.map((m) =>
+        this.notifyConversation(
+          m.userId,
+          `Group name was updated to "${updated.title}".`,
+          currentUserId,
+          conversationId,
+        ),
+      ),
+    );
+
+    return {
+      ok: true,
+      conversationId: updated.id,
+      title: updated.title,
+      updatedAt: updated.updatedAt,
+    };
+  }
+
+  async updateGroupAvatar(
+    conversationId: string,
+    currentUserId: string,
+    avatar: Express.Multer.File,
+  ) {
+    if (!avatar) {
+      throw new BadRequestException('avatar is required');
+    }
+
+    const conv = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { id: true, type: true, deletedAt: true },
+    });
+
+    if (!conv || conv.deletedAt) {
+      throw new BadRequestException('Conversation not found');
+    }
+
+    if (conv.type !== ConversationType.GROUP) {
+      throw new BadRequestException(
+        'Only group conversations can update avatar',
+      );
+    }
+
+    await this.requireAdmin(conversationId, currentUserId);
+
+    if (!avatar.mimetype?.startsWith('image/')) {
+      throw new BadRequestException('Group avatar must be an image file');
+    }
+
+    const maxBytes = 5 * 1024 * 1024;
+    if (avatar.size > maxBytes) {
+      throw new BadRequestException('Group avatar size must be 5MB or less');
+    }
+
+    const avatarFolder = appConfig()
+      .storageUrl.avatar.replace(/^\/+/, '')
+      .replace(/\/+$/, '');
+
+    const safeExt =
+      extname(avatar.originalname || '').toLowerCase() ||
+      (avatar.mimetype === 'image/png'
+        ? '.png'
+        : avatar.mimetype === 'image/webp'
+          ? '.webp'
+          : '.jpg');
+
+    const fileKey = `${avatarFolder}/group-${Date.now()}-${currentUserId}${safeExt}`;
+    await SazedStorage.put(fileKey, avatar.buffer);
+    const avatarUrl = SazedStorage.url(fileKey);
+
+    const updated = await this.prisma.conversation.update({
+      where: { id: conversationId },
+      data: { avatarUrl, updatedAt: new Date() },
+      select: { id: true, avatarUrl: true, updatedAt: true },
+    });
+
+    const members = await this.prisma.membership.findMany({
+      where: { conversationId, deletedAt: null, userId: { not: currentUserId } },
+      select: { userId: true },
+    });
+
+    await Promise.all(
+      members.map((m) =>
+        this.notifyConversation(
+          m.userId,
+          'Group photo was updated.',
+          currentUserId,
+          conversationId,
+        ),
+      ),
+    );
+
+    return {
+      ok: true,
+      conversationId: updated.id,
+      avatarUrl: updated.avatarUrl,
+      updatedAt: updated.updatedAt,
+    };
+  }
+
+  async deleteConversation(conversationId: string, currentUserId: string) {
+    const conv = await this.prisma.conversation.findUnique({
+      where: { id: conversationId },
+      select: { id: true, type: true, deletedAt: true },
+    });
+
+    if (!conv || conv.deletedAt) {
+      throw new BadRequestException('Conversation not found');
+    }
+
+    if (conv.type === ConversationType.GROUP) {
+      await this.requireAdmin(conversationId, currentUserId);
+    } else {
+      await this.ensureMember(conversationId, currentUserId);
+    }
+
+    const now = new Date();
+
+    const members = await this.prisma.membership.findMany({
+      where: { conversationId, deletedAt: null, userId: { not: currentUserId } },
+      select: { userId: true },
+    });
+
+    await this.prisma.$transaction([
+      this.prisma.conversation.update({
+        where: { id: conversationId },
+        data: { deletedAt: now, updatedAt: now },
+      }),
+      this.prisma.membership.updateMany({
+        where: { conversationId, deletedAt: null },
+        data: { deletedAt: now, updatedAt: now },
+      }),
+    ]);
+
+    await Promise.all(
+      members.map((m) =>
+        this.notifyConversation(
+          m.userId,
+          'A conversation you were in has been deleted.',
+          currentUserId,
+          conversationId,
+        ),
+      ),
+    );
+
+    return {
+      ok: true,
+      conversationId,
+      deletedAt: now,
+    };
   }
 }

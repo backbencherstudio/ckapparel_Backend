@@ -22,6 +22,12 @@ import { PaymentModule } from './modules/payment/payment.module';
 import { SubscriptionModule } from './modules/subscription/subscription.module';
 import { NotificationModule } from './modules/application/notification/notification.module';
 import { ChatModule } from './modules/chat/chat.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { MonthlyResetScheduler } from './common/helper/monthly-reset.scheduler';
+import { ChallengesModule as UserChallengesModule } from './modules/challenges/challenges.module';
+import { SupportModule } from './modules/support/support.module';
+import { SponsorshipModule } from './modules/sponsorship/sponsorship.module';
+import { QuotationModule } from './modules/quotation/quotation.module';
 
 @Module({
   imports: [
@@ -50,6 +56,7 @@ import { ChatModule } from './modules/chat/chat.module';
       },
     }),
 
+
     // disabling throttling for dev
     // ThrottlerModule.forRoot([
     //   {
@@ -69,6 +76,7 @@ import { ChatModule } from './modules/chat/chat.module';
     //   },
     // ]),
     // General modules
+    ScheduleModule.forRoot(),
     PrismaModule,
     AuthModule,
     AbilityModule,
@@ -79,6 +87,10 @@ import { ChatModule } from './modules/chat/chat.module';
     SubscriptionModule,
     NotificationModule,
     ChatModule,
+    UserChallengesModule,
+    SupportModule,
+    SponsorshipModule,
+    QuotationModule,
   ],
   controllers: [AppController],
   providers: [
@@ -92,6 +104,7 @@ import { ChatModule } from './modules/chat/chat.module';
     //   useClass: ThrottlerBehindProxyGuard,
     // },
     AppService,
+    MonthlyResetScheduler,
   ],
 })
 export class AppModule {

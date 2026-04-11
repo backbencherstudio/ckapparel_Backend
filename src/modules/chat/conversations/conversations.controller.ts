@@ -1,4 +1,5 @@
 import {
+  Delete,
   BadRequestException,
   Body,
   Controller,
@@ -12,9 +13,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiBody,
   ApiConsumes,
+  ApiExcludeEndpoint,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
@@ -30,7 +35,6 @@ import { JwtAuthGuard } from 'src/modules/auth/guards/jwt-auth.guard';
 import { GetUser } from 'src/modules/auth/decorators/get-user.decorator';
 import { MemberRole } from '@prisma/client';
 
-
 @UseGuards(JwtAuthGuard)
 @ApiTags('chat-conversations')
 @ApiBearerAuth('user_token')
@@ -40,14 +44,18 @@ export class ConversationsController {
   constructor(private readonly service: ConversationsService) {}
 
   @Post('dm')
+  @ApiExcludeEndpoint()
   @ApiOperation({ summary: 'Create or return a DM conversation' })
   @ApiBody({ type: CreateDmDto })
-  @ApiOkResponse({ description: 'DM conversation created or existing conversation returned.' })
+  @ApiOkResponse({
+    description: 'DM conversation created or existing conversation returned.',
+  })
   createDm(@GetUser() user: any, @Body() dto: CreateDmDto) {
     return this.service.createDm(user.userId, dto.otherUserId);
   }
 
   @Post('group')
+  @ApiExcludeEndpoint()
   @ApiOperation({ summary: 'Create a group conversation' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -60,7 +68,10 @@ export class ConversationsController {
             {
               type: 'array',
               items: { type: 'string' },
-              example: ['cmmlhoxaa0000v83s6kxio16b', 'cmmliufke0000v8xs48uyxj6p'],
+              example: [
+                'cmmlhoxaa0000v83s6kxio16b',
+                'cmmliufke0000v8xs48uyxj6p',
+              ],
             },
             {
               type: 'string',
@@ -68,7 +79,8 @@ export class ConversationsController {
             },
             {
               type: 'string',
-              example: '["cmmlhoxaa0000v83s6kxio16b","cmmliufke0000v8xs48uyxj6p"]',
+              example:
+                '["cmmlhoxaa0000v83s6kxio16b","cmmliufke0000v8xs48uyxj6p"]',
             },
           ],
           description:
@@ -99,6 +111,7 @@ export class ConversationsController {
   }
 
   @Get('group-conversations')
+  @ApiExcludeEndpoint()
   @ApiOperation({ summary: 'List group conversations for current user' })
   @ApiOkResponse({ description: 'Group conversations fetched successfully.' })
   listGroupConversations(@GetUser() user: any) {
@@ -107,8 +120,18 @@ export class ConversationsController {
 
   @Get()
   @ApiOperation({ summary: 'List my conversations' })
-  @ApiQuery({ name: 'take', required: false, description: 'Page size', example: '20' })
-  @ApiQuery({ name: 'skip', required: false, description: 'Records to skip', example: '0' })
+  @ApiQuery({
+    name: 'take',
+    required: false,
+    description: 'Page size',
+    example: '20',
+  })
+  @ApiQuery({
+    name: 'skip',
+    required: false,
+    description: 'Records to skip',
+    example: '0',
+  })
   @ApiOkResponse({ description: 'Conversations fetched successfully.' })
   listMine(
     @GetUser() user: any,
@@ -125,7 +148,11 @@ export class ConversationsController {
   // unread for one conversation
   @Get(':id/unread')
   @ApiOperation({ summary: 'Get unread count for a conversation' })
-  @ApiParam({ name: 'id', description: 'Conversation id', example: 'cmmlk8qn20002v8xsglb2csrh' })
+  @ApiParam({
+    name: 'id',
+    description: 'Conversation id',
+    example: 'cmmlk8qn20002v8xsglb2csrh',
+  })
   @ApiOkResponse({ description: 'Unread count fetched successfully.' })
   unread(@Param('id') id: string, @GetUser() user: any) {
     return this.service.unreadFor(id, user.userId);
@@ -134,13 +161,25 @@ export class ConversationsController {
   // mark read up to now or specific timestamp
   @Patch(':id/read')
   @ApiOperation({ summary: 'Mark conversation as read' })
-  @ApiParam({ name: 'id', description: 'Conversation id', example: 'cmmlk8qn20002v8xsglb2csrh' })
+  @ApiParam({
+    name: 'id',
+    description: 'Conversation id',
+    example: 'cmmlk8qn20002v8xsglb2csrh',
+  })
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
-        at: { type: 'string', format: 'date-time', example: '2026-03-11T04:50:24.905Z' },
-        messageCreatedAt: { type: 'string', format: 'date-time', example: '2026-03-11T04:50:24.905Z' },
+        at: {
+          type: 'string',
+          format: 'date-time',
+          example: '2026-03-11T04:50:24.905Z',
+        },
+        messageCreatedAt: {
+          type: 'string',
+          format: 'date-time',
+          example: '2026-03-11T04:50:24.905Z',
+        },
       },
     },
   })
@@ -161,7 +200,11 @@ export class ConversationsController {
   // --- member management ---
   @Post(':id/members')
   @ApiOperation({ summary: 'Add members to a group conversation (admin only)' })
-  @ApiParam({ name: 'id', description: 'Conversation id', example: 'cmmlk8qn20002v8xsglb2csrh' })
+  @ApiParam({
+    name: 'id',
+    description: 'Conversation id',
+    example: 'cmmlk8qn20002v8xsglb2csrh',
+  })
   @ApiBody({
     schema: {
       type: 'object',
@@ -186,7 +229,11 @@ export class ConversationsController {
 
   @Get(':id/members')
   @ApiOperation({ summary: 'Get group members' })
-  @ApiParam({ name: 'id', description: 'Conversation id', example: 'cmmlk8qn20002v8xsglb2csrh' })
+  @ApiParam({
+    name: 'id',
+    description: 'Conversation id',
+    example: 'cmmlk8qn20002v8xsglb2csrh',
+  })
   @ApiOkResponse({ description: 'Group members fetched successfully.' })
   getMembers(@Param('id') id: string, @GetUser() user: any) {
     return this.service.getGroupMembers(id, user.userId);
@@ -194,8 +241,16 @@ export class ConversationsController {
 
   @Patch(':id/members/:userId/role')
   @ApiOperation({ summary: 'Set role for a group member (admin only)' })
-  @ApiParam({ name: 'id', description: 'Conversation id', example: 'cmmlk8qn20002v8xsglb2csrh' })
-  @ApiParam({ name: 'userId', description: 'Target user id', example: 'cmmliufke0000v8xs48uyxj6p' })
+  @ApiParam({
+    name: 'id',
+    description: 'Conversation id',
+    example: 'cmmlk8qn20002v8xsglb2csrh',
+  })
+  @ApiParam({
+    name: 'userId',
+    description: 'Target user id',
+    example: 'cmmliufke0000v8xs48uyxj6p',
+  })
   @ApiBody({
     schema: {
       type: 'object',
@@ -217,8 +272,16 @@ export class ConversationsController {
 
   @Post(':id/members/:userId/remove')
   @ApiOperation({ summary: 'Remove member from group (admin only)' })
-  @ApiParam({ name: 'id', description: 'Conversation id', example: 'cmmlk8qn20002v8xsglb2csrh' })
-  @ApiParam({ name: 'userId', description: 'Target user id', example: 'cmmliufke0000v8xs48uyxj6p' })
+  @ApiParam({
+    name: 'id',
+    description: 'Conversation id',
+    example: 'cmmlk8qn20002v8xsglb2csrh',
+  })
+  @ApiParam({
+    name: 'userId',
+    description: 'Target user id',
+    example: 'cmmliufke0000v8xs48uyxj6p',
+  })
   @ApiOkResponse({ description: 'Member removed successfully.' })
   remove(
     @Param('id') id: string,
@@ -230,23 +293,120 @@ export class ConversationsController {
 
   //------ clear conversation for me----
   @Patch(':id/clear')
-  @ApiOperation({ summary: 'Clear conversation history for current user only' })
-  @ApiParam({ name: 'id', description: 'Conversation id', example: 'cmmlk8qn20002v8xsglb2csrh' })
+  @ApiOperation({
+    summary: 'Clear all conversation history for current user only',
+    description:
+      'Clears the full conversation history for the current user (from beginning up to now). This does not delete messages for other participants.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Conversation id',
+    example: 'cmmlk8qn20002v8xsglb2csrh',
+  })
+  @ApiOkResponse({ description: 'Conversation cleared for current user.' })
+  clearForMe(@Param('id') id: string, @GetUser() user: any) {
+    console.log(`Clearing conversation ${id} for user ${user.userId}`);
+    return this.service.clearForUser(id, user.userId);
+  }
+
+  @Patch(':id/name')
+  @ApiOperation({
+    summary: 'Update group conversation name (admin only)',
+    description:
+      'Only admins of a GROUP conversation can rename it. DM conversations are not supported.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Conversation id',
+    example: 'cmmlk8qn20002v8xsglb2csrh',
+  })
   @ApiBody({
     schema: {
       type: 'object',
       properties: {
-        upTo: { type: 'string', format: 'date-time', example: '2026-03-11T07:17:31.311Z' },
+        title: { type: 'string', example: 'Athlete Elite Team' },
       },
+      required: ['title'],
     },
   })
-  @ApiOkResponse({ description: 'Conversation cleared for current user.' })
-  clearForMe(
-    @Param('id') id,
+  @ApiOkResponse({
+    description: 'Group conversation name updated successfully.',
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid title or conversation is not a group.',
+  })
+  @ApiForbiddenResponse({ description: 'Admin only for group conversation.' })
+  @ApiNotFoundResponse({ description: 'Conversation not found.' })
+  updateGroupName(
+    @Param('id') id: string,
     @GetUser() user: any,
-    @Body() body?: { upTo?: string },
+    @Body() body: { title: string },
   ) {
-    const upTo = body?.upTo ? new Date(body.upTo) : undefined;
-    return this.service.clearForUser(id, user.userId, upTo);
+    return this.service.updateGroupTitle(id, user.userId, body?.title);
+  }
+
+  @Patch(':id/avatar')
+  @ApiOperation({
+    summary: 'Update group conversation photo (admin only)',
+    description:
+      'Only admins of a GROUP conversation can update the group avatar. Accepts image file up to 5MB.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Conversation id',
+    example: 'cmmlk8qn20002v8xsglb2csrh',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        avatar: { type: 'string', format: 'binary' },
+      },
+      required: ['avatar'],
+    },
+  })
+  @ApiOkResponse({
+    description: 'Group conversation photo updated successfully.',
+  })
+  @ApiBadRequestResponse({
+    description: 'Invalid avatar file or conversation is not a group.',
+  })
+  @ApiForbiddenResponse({ description: 'Admin only for group conversation.' })
+  @ApiNotFoundResponse({ description: 'Conversation not found.' })
+  @UseInterceptors(
+    FileInterceptor('avatar', {
+      storage: memoryStorage(),
+    }),
+  )
+  updateGroupAvatar(
+    @Param('id') id: string,
+    @GetUser() user: any,
+    @UploadedFile() avatar?: Express.Multer.File,
+  ) {
+    if (!avatar) {
+      throw new BadRequestException('avatar is required');
+    }
+    return this.service.updateGroupAvatar(id, user.userId, avatar);
+  }
+
+  @Delete(':id')
+  @ApiOperation({
+    summary: 'Delete conversation',
+    description:
+      'Soft-deletes a conversation. For GROUP conversations, only admins can delete.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Conversation id',
+    example: 'cmmlk8qn20002v8xsglb2csrh',
+  })
+  @ApiOkResponse({ description: 'Conversation deleted successfully.' })
+  @ApiForbiddenResponse({
+    description: 'Not allowed to delete this conversation.',
+  })
+  @ApiNotFoundResponse({ description: 'Conversation not found.' })
+  deleteConversation(@Param('id') id: string, @GetUser() user: any) {
+    return this.service.deleteConversation(id, user.userId);
   }
 }

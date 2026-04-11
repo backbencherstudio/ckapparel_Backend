@@ -26,6 +26,13 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
 
   @IsOptional()
   @ApiProperty({
+    description: 'Country flag SVG URL',
+    example: 'https://flagcdn.com/bd.svg',
+  })
+  flag?: string;
+
+  @IsOptional()
+  @ApiProperty({
     description: 'Gender',
     example: 'male',
   })
@@ -37,6 +44,13 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
     example: '14/11/2001',
   })
   date_of_birth?: string;
+
+  @IsOptional()
+  @ApiProperty({
+    description: 'Age',
+    example: 25,
+  })
+  age?: number;
 
   @IsOptional()
   @ApiProperty({

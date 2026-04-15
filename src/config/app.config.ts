@@ -86,6 +86,25 @@ export default () => ({
     },
   },
 
+  strava: {
+    base: process.env.STRAVA_API_BASE || 'https://www.strava.com',
+    api_v3: process.env.STRAVA_API_V3 || 'https://www.strava.com/api/v3',
+    client_id: process.env.STRAVA_CLIENT_ID,
+    client_secret: process.env.STRAVA_CLIENT_SECRET,
+    callback_url: process.env.STRAVA_CALLBACK_URL,
+    webhook_verify_token: process.env.STRAVA_WEBHOOK_VERIFY_TOKEN,
+    webhook_callback_url: process.env.STRAVA_WEBHOOK_CALLBACK_URL,
+    auto_webhook_subscribe:
+      (process.env.STRAVA_AUTO_WEBHOOK_SUBSCRIBE || 'false') === 'true',
+    auto_sync_enabled: (process.env.STRAVA_AUTO_SYNC_ENABLED || 'false') === 'true',
+    auto_sync_cron: process.env.STRAVA_AUTO_SYNC_CRON || '*/30 * * * *',
+    auto_sync_per_page: parseInt(process.env.STRAVA_AUTO_SYNC_PER_PAGE || '50', 10),
+    auto_sync_max_pages: parseInt(process.env.STRAVA_AUTO_SYNC_MAX_PAGES || '1', 10),
+    scope:
+      process.env.STRAVA_SCOPES ||
+      'read,activity:read,activity:read_all,profile:read_all',
+  },
+
   payment: {
     stripe: {
       secret_key: process.env.STRIPE_SECRET_KEY,

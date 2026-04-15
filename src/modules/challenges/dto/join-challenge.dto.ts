@@ -13,37 +13,80 @@ export class JoinChallengeDto {
 }
 
 export class JoinChallengeResponseDto {
-  id: string;
-  challengeId: string;
-  userId: string;
-  status: string;
-  joinedAt: Date;
-  conversation: {
+  success: boolean;
+  message: string;
+  data: {
     id: string;
-    title: string;
-    type: string;
-    membersCount: number;
-  } | null;
-  strava: {
-    connected: boolean;
-    required: boolean;
-    connectionUrl?: string; // URL to redirect user for Strava OAuth
-    externalConnectionId?: string;
+    challengeId: string;
+    userId: string;
+    status: string;
+    joinedAt: Date;
+    startedAt?: Date | null;
+    conversation: {
+      id: string;
+      title: string;
+      type: string;
+      membersCount: number;
+    } | null;
+    strava: {
+      connected: boolean;
+      required: boolean;
+      connectionUrl?: string;
+      externalConnectionId?: string;
+    };
+    canStart: boolean;
   };
-  canStart: boolean; // whether user can start the challenge now
-  message?: string;
+}
+
+export class StartChallengeResponseDto {
+  success: boolean;
+  message: string;
+  data: {
+    id: string;
+    challengeId: string;
+    userId: string;
+    status: string;
+    startedAt: Date;
+    joinedAt: Date;
+  };
+}
+
+export class PauseChallengeResponseDto {
+  success: boolean;
+  message: string;
+  data: {
+    challengeId: string;
+    userId: string;
+    status: string;
+    pausedAt: Date;
+  };
+}
+
+export class ResumeChallengeResponseDto {
+  success: boolean;
+  message: string;
+  data: {
+    challengeId: string;
+    userId: string;
+    status: string;
+    resumedAt: Date;
+    startedAt: Date;
+  };
 }
 
 export class LeaveChallengeResponseDto {
-  challengeId: string;
-  userId: string;
-  status: string;
-  leftAt: Date;
-  conversation: {
-    id: string;
-    title: string;
-    type: string;
-    membersCount: number;
-  } | null;
+  success: boolean;
   message: string;
+  data: {
+    challengeId: string;
+    userId: string;
+    status: string;
+    leftAt: Date;
+    conversation: {
+      id: string;
+      title: string;
+      type: string;
+      membersCount: number;
+    } | null;
+  };
 }

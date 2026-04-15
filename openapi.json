@@ -899,6 +899,495 @@
         ]
       }
     },
+    "/api/auth/strava/url": {
+      "get": {
+        "description": "Returns the Strava OAuth authorization URL as JSON. Recommended for mobile apps and Swagger testing. Mobile client should open data.authUrl in system browser/in-app browser and wait for callback completion.",
+        "operationId": "StravaController_getConnectUrl",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Strava authorization URL generated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "success": true,
+                    "data": {
+                      "authUrl": "https://www.strava.com/oauth/authorize?client_id=177544&redirect_uri=http%3A%2F%2Flocalhost%3A4002%2Fapi%2Fauth%2Fstrava%2Fcallback&response_type=code&approval_prompt=auto&scope=read%2Cactivity%3Aread%2Cactivity%3Aread_all%2Cprofile%3Aread_all&state=eyJ..."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token."
+          }
+        },
+        "security": [
+          {
+            "user_token": []
+          }
+        ],
+        "summary": "Connect Strava - Get Strava authorization URL",
+        "tags": [
+          "Strava Integration"
+        ]
+      }
+    },
+    "/api/auth/strava/callback": {
+      "get": {
+        "description": "Internal callback endpoint called by Strava after consent. Backend handles token exchange and connection persistence. Mobile/frontend usually does not call this directly; app only needs to handle post-callback success/error redirect screen.",
+        "operationId": "StravaController_callback",
+        "parameters": [
+          {
+            "name": "code",
+            "required": false,
+            "in": "query",
+            "description": "Authorization code returned by Strava after user consent.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "required": false,
+            "in": "query",
+            "description": "Signed state created by backend to validate the callback request.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error",
+            "required": false,
+            "in": "query",
+            "description": "Error key returned by Strava when user denies consent.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Swagger mode callback success response (JSON).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "success": true,
+                    "provider": "strava",
+                    "externalConnectionId": "cmnwnes3r0001v828c2ad5bdw",
+                    "message": "Strava connected successfully"
+                  }
+                }
+              }
+            }
+          },
+          "302": {
+            "description": "Frontend mode callback response (HTTP redirect)."
+          },
+          "400": {
+            "description": "Invalid or expired callback state/code."
+          }
+        },
+        "summary": "Strava OAuth callback",
+        "tags": [
+          "Strava Integration"
+        ]
+      }
+    },
+    "/api/strava/connection": {
+      "get": {
+        "description": "Returns current Strava connection for authenticated user. Shows connection status, provider, provider user ID, scopes granted, token expiration, and sync history. Used to check connection validity before starting challenges.",
+        "operationId": "StravaController_getConnectionStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Strava connection fetched successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "success": true,
+                    "data": {
+                      "connected": true,
+                      "connection": {
+                        "id": "cmnwnes3r0001v828c2ad5bdw",
+                        "provider": "STRAVA",
+                        "provider_user_id": "12345678",
+                        "provider_name": "John Athlete",
+                        "provider_profile_url": "https://www.strava.com/athletes/12345678",
+                        "scope": "read,activity:read,activity:read_all,profile:read_all",
+                        "is_active": true,
+                        "token_expires_at": "2026-05-13T08:20:13.000Z",
+                        "last_sync_at": "2026-04-15T14:30:00.000Z",
+                        "synced_activities_count": 247
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid access token."
+          }
+        },
+        "security": [
+          {
+            "user_token": []
+          }
+        ],
+        "summary": "Get Strava connection status and details",
+        "tags": [
+          "Strava Integration"
+        ]
+      },
+      "delete": {
+        "description": "Revokes Strava connection for authenticated user. Disables automatic activity syncing. User must reconnect to participate in Strava-dependent challenges afterward. Existing synced activities remain in database for audit/history.",
+        "operationId": "StravaController_disconnect",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Strava connection revoked successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "success": true,
+                    "message": "Strava disconnected successfully",
+                    "data": {
+                      "isActive": false,
+                      "nextSyncAt": null
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "No active Strava connection found."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
+          }
+        },
+        "security": [
+          {
+            "user_token": []
+          }
+        ],
+        "summary": "Disconnect Strava account",
+        "tags": [
+          "Strava Integration"
+        ]
+      }
+    },
+    "/api/strava/sync": {
+      "post": {
+        "description": "Pulls activities from Strava using stored tokens and upserts into synced activities table. Request body contains only optional filters/pagination, not activity payload. This endpoint can be called manually by app (on-demand sync). Optional automatic schedule is also available via env flags: STRAVA_AUTO_SYNC_ENABLED=true and STRAVA_AUTO_SYNC_CRON (default: */30 * * * *). Recommended first test body is {} or {\"perPage\":20,\"maxPages\":1}.",
+        "operationId": "StravaController_sync",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "description": "Optional sync options only. Values are not taken from Strava payloads. Use GET /api/strava/connection to read externalConnectionId when needed.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StravaSyncDto"
+              },
+              "examples": {
+                "minimal": {
+                  "summary": "Recommended first test",
+                  "value": {}
+                },
+                "smallBatch": {
+                  "summary": "Fetch small recent batch",
+                  "value": {
+                    "perPage": 20,
+                    "maxPages": 1
+                  }
+                },
+                "timeWindow": {
+                  "summary": "Sync specific date range",
+                  "value": {
+                    "after": 1775000000,
+                    "before": 1777600000,
+                    "perPage": 50,
+                    "maxPages": 2
+                  }
+                },
+                "specificConnection": {
+                  "summary": "Target one specific external connection",
+                  "value": {
+                    "externalConnectionId": "cmnwnes3r0001v828c2ad5bdw",
+                    "perPage": 20,
+                    "maxPages": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Strava activities synced successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "success": true,
+                    "data": {
+                      "synced": 7,
+                      "pagesFetched": 1,
+                      "externalConnectionId": "cmnwnes3r0001v828c2ad5bdw"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid sync payload."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
+          }
+        },
+        "security": [
+          {
+            "user_token": []
+          }
+        ],
+        "summary": "Sync activities from Strava",
+        "tags": [
+          "Strava Integration"
+        ]
+      }
+    },
+    "/api/strava/webhook": {
+      "get": {
+        "description": "Handles Strava webhook verification request (GET). Part of Strava webhook subscription setup flow. Called by Strava servers during subscription creation to verify callback URL ownership. Frontend/clients should NOT call this endpoint manually. Validates verify_token against STRAVA_WEBHOOK_VERIFY_TOKEN and echoes back challenge string.",
+        "operationId": "StravaController_verifyWebhook",
+        "parameters": [
+          {
+            "name": "hub.verify_token",
+            "required": true,
+            "in": "query",
+            "description": "Token sent by Strava. Must match environment variable STRAVA_WEBHOOK_VERIFY_TOKEN.",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hub.challenge",
+            "required": true,
+            "in": "query",
+            "description": "Challenge string from Strava that must be echoed back in response.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Webhook verification successful. Challenge echoed back.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "hub.challenge": "abc123challenge456"
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Webhook verify token does not match STRAVA_WEBHOOK_VERIFY_TOKEN."
+          }
+        },
+        "summary": "Strava webhook verification handshake",
+        "tags": [
+          "Strava Integration"
+        ]
+      },
+      "post": {
+        "description": "Receives real-time Strava activity push events after webhook subscription is active. Called by Strava servers only when user completes/updates activities in Strava app. Frontend MUST NOT call this directly. Events trigger automatic activity sync and challenge progress projection rebuild. Supported events: activity.created (new activity), activity.updated (modified activity).",
+        "operationId": "StravaController_webhook",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "description": "Strava webhook event payload with updated activity metadata.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "example": {
+                  "aspect_type": "create",
+                  "event_time": 1776052000,
+                  "object_id": 1234567890,
+                  "object_type": "activity",
+                  "owner_id": 12345678,
+                  "subscription_id": 99999,
+                  "updates": {
+                    "title": "Morning Run",
+                    "sport_type": "Run"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Webhook event accepted and queued for async processing.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "success": true,
+                    "message": "Webhook event queued"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Receive Strava push events in real-time (webhook)",
+        "tags": [
+          "Strava Integration"
+        ]
+      }
+    },
+    "/api/strava/webhook/subscription": {
+      "post": {
+        "description": "Creates Strava push subscription for real-time activity events. Requires STRAVA_WEBHOOK_CALLBACK_URL and STRAVA_WEBHOOK_VERIFY_TOKEN environment variables. Use for manual setup/recovery. Automatic one-time subscription bootstrap available via STRAVA_AUTO_WEBHOOK_SUBSCRIBE=true on backend startup. Strava UI does not provide webhook subscription form fields - must be created programmatically via this endpoint or Strava API.",
+        "operationId": "StravaController_createSubscription",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Webhook subscription created successfully on Strava servers.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "id": 99999,
+                    "resource_state": 2,
+                    "callback_url": "https://api.example.com/api/strava/webhook",
+                    "created_at": "2026-04-15T12:00:00Z"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing STRAVA_WEBHOOK_CALLBACK_URL or STRAVA_WEBHOOK_VERIFY_TOKEN environment variables."
+          },
+          "401": {
+            "description": "Missing or invalid admin access token."
+          },
+          "403": {
+            "description": "Forbidden - Admin role required."
+          }
+        },
+        "security": [
+          {
+            "admin_token": []
+          }
+        ],
+        "summary": "Create Strava webhook subscription (Admin)",
+        "tags": [
+          "Strava Integration"
+        ]
+      },
+      "get": {
+        "description": "Fetches list of active Strava push webhook subscriptions for this application. Use to verify subscription is set up and healthy. Useful after setup to confirm exactly one subscription exists and is correctly configured.",
+        "operationId": "StravaController_getSubscription",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "List of Strava webhook subscriptions fetched successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": [
+                    {
+                      "id": 99999,
+                      "callback_url": "https://api.example.com/api/strava/webhook",
+                      "created_at": "2026-04-15T12:00:00Z",
+                      "resource_state": 2
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid admin access token."
+          },
+          "403": {
+            "description": "Forbidden - Admin role required."
+          }
+        },
+        "security": [
+          {
+            "admin_token": []
+          }
+        ],
+        "summary": "View all Strava webhook subscriptions (Admin)",
+        "tags": [
+          "Strava Integration"
+        ]
+      },
+      "delete": {
+        "description": "Deletes a specific Strava webhook subscription by ID. Use for maintenance, decommissioning, or when rotating callback domain/verify token. After deletion, webhook events will no longer be received until new subscription is created.",
+        "operationId": "StravaController_deleteSubscription",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "query",
+            "description": "Subscription ID from Strava (obtained from GET subscription endpoint)",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Webhook subscription deleted successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "success": true,
+                    "message": "Subscription 99999 deleted successfully"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid or non-existent subscription ID."
+          },
+          "401": {
+            "description": "Missing or invalid admin access token."
+          },
+          "403": {
+            "description": "Forbidden - Admin role required."
+          }
+        },
+        "security": [
+          {
+            "admin_token": []
+          }
+        ],
+        "summary": "Delete Strava webhook subscription (Admin)",
+        "tags": [
+          "Strava Integration"
+        ]
+      }
+    },
     "/api/admin/user": {
       "get": {
         "description": "Returns users with optional search/type/approval filtering.",
@@ -4033,14 +4522,14 @@
     },
     "/api/challenges/{id}": {
       "get": {
-        "description": "Returns challenge detail, user progress, checkpoints, chat action metadata, and attempt connection requirements.",
+        "description": "Returns comprehensive challenge information including title, description, metrics, checkpoints, user participation status, progress percentage, active checkpoint sequence, and chat metadata. Includes Strava connection requirements and leaderboard context for user positioning.",
         "operationId": "ChallengesController_getUserChallengeDetail",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
-            "description": "Challenge ID",
+            "description": "Challenge ID (CUID format)",
             "schema": {
               "example": "cm8q1n1f50000kq3g7d9h2zab",
               "type": "string"
@@ -4049,10 +4538,78 @@
         ],
         "responses": {
           "200": {
-            "description": "Challenge detail fetched successfully."
+            "description": "Challenge detail fetched successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "success": true,
+                    "message": "Challenge detail fetched",
+                    "data": {
+                      "id": "cm8q1n1f50000kq3g7d9h2zab",
+                      "title": "100K Ultra Challenge",
+                      "subtitle": "Winter 2026 Edition",
+                      "description": "Complete 100 kilometers within 30 days",
+                      "path": "ELITE_ATHLETE",
+                      "category": "RUNNING",
+                      "difficulty": "ADVANCED",
+                      "require_device_connection": true,
+                      "allow_manual_submission": false,
+                      "enable_chat": true,
+                      "is_featured": true,
+                      "challenge_country": "US",
+                      "status": "ACTIVE",
+                      "metrics": [
+                        {
+                          "metric_type": "DISTANCE_KM",
+                          "target_value": 100,
+                          "is_required": true
+                        }
+                      ],
+                      "checkpoints": [
+                        {
+                          "sequence": 1,
+                          "title": "25K Milestone",
+                          "metric_targets": {
+                            "DISTANCE_KM": 25
+                          },
+                          "is_required": true
+                        },
+                        {
+                          "sequence": 2,
+                          "title": "50K Milestone",
+                          "metric_targets": {
+                            "DISTANCE_KM": 50
+                          },
+                          "is_required": true
+                        }
+                      ],
+                      "participation": {
+                        "id": "part123",
+                        "status": "IN_PROGRESS",
+                        "joined_at": "2026-04-15T10:00:00Z",
+                        "started_at": "2026-04-15T10:05:00Z",
+                        "completed_at": null,
+                        "progress_percent": 45,
+                        "active_checkpoint_seq": 2
+                      },
+                      "conversation": {
+                        "id": "conv123",
+                        "title": "Ultra Challenge 2026",
+                        "type": "GROUP",
+                        "membersCount": 23
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Challenge not found or has been deleted."
           },
           "401": {
-            "description": "Unauthorized request."
+            "description": "Missing or invalid access token."
           }
         },
         "security": [
@@ -4068,14 +4625,14 @@
     },
     "/api/challenges/{id}/leaderboard": {
       "get": {
-        "description": "Returns leaderboard rows for the selected challenge, including rank, progress, finish time, and user profile snippets.",
+        "description": "Returns ranked leaderboard for the specified challenge. Rankings based on: (1) completion status, (2) progress percentage, (3) finish_time_sec (excludes paused duration for fair comparison), (4) start time. Includes user profiles, metrics achieved, and your current position relative to other participants.",
         "operationId": "ChallengesController_getChallengeLeaderboard",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
-            "description": "Challenge ID",
+            "description": "Challenge ID (CUID format)",
             "schema": {
               "example": "cm8q1n1f50000kq3g7d9h2zab",
               "type": "string"
@@ -4085,19 +4642,89 @@
             "name": "limit",
             "required": false,
             "in": "query",
-            "description": "Max leaderboard rows to return",
+            "description": "Number of top leaderboard rows to return (default: 50, max: 500)",
             "schema": {
               "example": 50,
-              "type": "string"
+              "type": "number"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "Challenge leaderboard fetched successfully."
+            "description": "Leaderboard fetched and ranked by completion criteria.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "success": true,
+                    "message": "Challenge leaderboard fetched",
+                    "data": {
+                      "challengeId": "cm8q1n1f50000kq3g7d9h2zab",
+                      "totalParticipants": 23,
+                      "completed": 8,
+                      "yourRank": 5,
+                      "yourStatus": "IN_PROGRESS",
+                      "leaderboard": [
+                        {
+                          "rank": 1,
+                          "user": {
+                            "id": "usr1",
+                            "name": "John Doe",
+                            "avatar": "https://..."
+                          },
+                          "status": "COMPLETED",
+                          "progress_percent": 100,
+                          "finished_at": "2026-04-10T15:30:00Z",
+                          "finish_time_sec": 86400,
+                          "metric_values": {
+                            "DISTANCE_KM": 100,
+                            "ELEVATION_M": 2000
+                          }
+                        },
+                        {
+                          "rank": 2,
+                          "user": {
+                            "id": "usr2",
+                            "name": "Jane Smith",
+                            "avatar": "https://..."
+                          },
+                          "status": "COMPLETED",
+                          "progress_percent": 100,
+                          "finished_at": "2026-04-11T08:00:00Z",
+                          "finish_time_sec": 130320,
+                          "metric_values": {
+                            "DISTANCE_KM": 100,
+                            "ELEVATION_M": 2000
+                          }
+                        },
+                        {
+                          "rank": 5,
+                          "user": {
+                            "id": "usr_me",
+                            "name": "Your Name",
+                            "avatar": "https://..."
+                          },
+                          "status": "IN_PROGRESS",
+                          "progress_percent": 45,
+                          "finished_at": null,
+                          "finish_time_sec": null,
+                          "metric_values": {
+                            "DISTANCE_KM": 45,
+                            "ELEVATION_M": 900
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Challenge not found or leaderboard not available."
           },
           "401": {
-            "description": "Unauthorized request."
+            "description": "Missing or invalid access token."
           }
         },
         "security": [
@@ -4105,7 +4732,7 @@
             "user_token": []
           }
         ],
-        "summary": "Get challenge leaderboard",
+        "summary": "Get challenge leaderboard with ranked standings",
         "tags": [
           "User Challenges"
         ]
@@ -4113,14 +4740,14 @@
     },
     "/api/challenges/{id}/join": {
       "post": {
-        "description": "Creates a new participation or re-joins an existing one by resetting status to JOINED. Also auto-adds the user to the challenge group conversation and returns connection status.",
+        "description": "Registers user as a challenge participant with status=JOINED and sets joined_at timestamp. Does NOT start challenge timing (started_at remains null). Validates Strava connection requirement. User must call POST /challenges/:id/start separately when ready to begin timing. Optional externalConnectionId body parameter: if provided, uses that specific connection; if omitted, uses primary active Strava connection.",
         "operationId": "ChallengesController_joinChallenge",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
-            "description": "Challenge ID",
+            "description": "Challenge ID (CUID format)",
             "schema": {
               "example": "cm8q1n1f50000kq3g7d9h2zab",
               "type": "string"
@@ -4129,17 +4756,30 @@
         ],
         "requestBody": {
           "required": true,
+          "description": "Join request. externalConnectionId is optional - omit to use default Strava connection.",
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/JoinChallengeDto"
+              },
+              "examples": {
+                "minimal": {
+                  "summary": "Use default Strava connection",
+                  "value": {}
+                },
+                "withConnection": {
+                  "summary": "Override with specific connection",
+                  "value": {
+                    "externalConnectionId": "extconn_abc123xyz"
+                  }
+                }
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Successfully joined the challenge.",
+            "description": "Successfully registered for challenge. Ready to call start endpoint.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4149,10 +4789,10 @@
             }
           },
           "400": {
-            "description": "Invalid challenge or missing connection."
+            "description": "Challenge not found, already in progress, requires Strava but not connected, or participation already exists."
           },
           "401": {
-            "description": "Unauthorized request."
+            "description": "Missing or invalid access token."
           }
         },
         "security": [
@@ -4160,22 +4800,22 @@
             "user_token": []
           }
         ],
-        "summary": "Join a challenge as a participant",
+        "summary": "Join challenge - register as participant (NO timing start)",
         "tags": [
           "User Challenges"
         ]
       }
     },
-    "/api/challenges/{id}/leave": {
-      "delete": {
-        "description": "Marks the current participation as abandoned and removes the user from the challenge group conversation.",
-        "operationId": "ChallengesController_leaveChallenge",
+    "/api/challenges/{id}/start": {
+      "post": {
+        "description": "Begins challenge timing for an already-joined participation (status must be JOINED). Sets started_at timestamp and transitions status to IN_PROGRESS. Subsequent Strava activities with activity_date >= started_at are eligible for progress calculation. Activities during pause windows (logged challenge_paused/challenge_resumed events) are excluded. MUST be called after join endpoint. Empty body - uses Strava connection already selected/confirmed at join time.",
+        "operationId": "ChallengesController_startChallenge",
         "parameters": [
           {
             "name": "id",
             "required": true,
             "in": "path",
-            "description": "Challenge ID",
+            "description": "Challenge ID (CUID format)",
             "schema": {
               "example": "cm8q1n1f50000kq3g7d9h2zab",
               "type": "string"
@@ -4184,7 +4824,142 @@
         ],
         "responses": {
           "200": {
-            "description": "Successfully left the challenge.",
+            "description": "Challenge started. Timing is now active. Ready for activities to be tracked.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartChallengeResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Challenge not found, not joined first, already completed, Strava required but not connected, or invalid participation state."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
+          }
+        },
+        "security": [
+          {
+            "user_token": []
+          }
+        ],
+        "summary": "Start challenge timing - begin active attempt",
+        "tags": [
+          "User Challenges"
+        ]
+      }
+    },
+    "/api/challenges/{id}/pause": {
+      "post": {
+        "description": "Pauses an active IN_PROGRESS challenge. Sets status=PAUSED and logs challenge_paused event with timestamp. Strava activities with timestamps within pause window (between pause and resume) are automatically excluded from progress calculation. Pause duration is subtracted from final finish_time_sec for fair leaderboard ranking. Only callable when status=IN_PROGRESS. Call resume endpoint to continue from pause point with original started_at preserved.",
+        "operationId": "ChallengesController_pauseChallenge",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Challenge ID (CUID format)",
+            "schema": {
+              "example": "cm8q1n1f50000kq3g7d9h2zab",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Challenge paused successfully. Pause event logged. Activities during pause excluded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PauseChallengeResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Challenge not found, not in IN_PROGRESS status, already completed, or already paused."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
+          }
+        },
+        "security": [
+          {
+            "user_token": []
+          }
+        ],
+        "summary": "Pause challenge - suspend timer and exclude activities",
+        "tags": [
+          "User Challenges"
+        ]
+      }
+    },
+    "/api/challenges/{id}/resume": {
+      "post": {
+        "description": "Resumes a PAUSED challenge to IN_PROGRESS status. Logs challenge_resumed event with timestamp. Original started_at timestamp is preserved (NOT reset). Pause window is recorded in journey logs. Activities after resume continue counting toward progress. Pause duration automatically excluded from leaderboard finish_time_sec calculation for fair ranking. Only callable when status=PAUSED. Validates Strava connection still active if required by challenge.",
+        "operationId": "ChallengesController_resumeChallenge",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Challenge ID (CUID format)",
+            "schema": {
+              "example": "cm8q1n1f50000kq3g7d9h2zab",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Challenge resumed successfully. Pause window recorded. Ready for continued activity tracking.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResumeChallengeResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Challenge not found, not in PAUSED status, Strava required but disconnected, or invalid participation state."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
+          }
+        },
+        "security": [
+          {
+            "user_token": []
+          }
+        ],
+        "summary": "Resume paused challenge - continue from pause point",
+        "tags": [
+          "User Challenges"
+        ]
+      }
+    },
+    "/api/challenges/{id}/leave": {
+      "delete": {
+        "description": "Abandons current challenge attempt and marks participation as ABANDONED. Removes user from challenge group conversation (if member). Can be called from any status (JOINED, IN_PROGRESS, PAUSED) except COMPLETED/ABANDONED. User can re-join using POST /challenges/:id/join endpoint afterward.",
+        "operationId": "ChallengesController_leaveChallenge",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "Challenge ID (CUID format)",
+            "schema": {
+              "example": "cm8q1n1f50000kq3g7d9h2zab",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Left challenge successfully. Removed from group conversation.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4194,10 +4969,10 @@
             }
           },
           "400": {
-            "description": "Invalid challenge or participation state."
+            "description": "Challenge not found, not joined, or already completed/abandoned."
           },
           "401": {
-            "description": "Unauthorized request."
+            "description": "Missing or invalid access token."
           }
         },
         "security": [
@@ -4205,7 +4980,7 @@
             "user_token": []
           }
         ],
-        "summary": "Leave a challenge as a participant",
+        "summary": "Leave challenge - abandon participation",
         "tags": [
           "User Challenges"
         ]
@@ -5850,6 +6625,42 @@
           }
         }
       },
+      "StravaSyncDto": {
+        "type": "object",
+        "properties": {
+          "externalConnectionId": {
+            "type": "string",
+            "description": "Optional specific external connection id (must belong to authenticated user). Read this value from GET /api/strava/connection response.",
+            "example": "cm9xyzconnection123"
+          },
+          "after": {
+            "type": "number",
+            "description": "Optional filter. Sync activities strictly after this UNIX timestamp (seconds). Example source: convert your target date/time to epoch seconds.",
+            "example": 1712000000
+          },
+          "before": {
+            "type": "number",
+            "description": "Optional filter. Sync activities strictly before this UNIX timestamp (seconds).",
+            "example": 1719999999
+          },
+          "page": {
+            "type": "number",
+            "description": "Optional pagination start page. Defaults to 1.",
+            "example": 1
+          },
+          "perPage": {
+            "type": "number",
+            "description": "Optional pagination size. Strava max is 200. Practical test value is 20 or 50.",
+            "example": 50
+          },
+          "maxPages": {
+            "type": "number",
+            "description": "Optional safety limit for pages in one request. Start with 1 for testing to avoid large backfills.",
+            "example": 1,
+            "default": 1
+          }
+        }
+      },
       "CreateChallengeMetricDto": {
         "type": "object",
         "properties": {
@@ -6539,6 +7350,18 @@
         }
       },
       "JoinChallengeResponseDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "StartChallengeResponseDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "PauseChallengeResponseDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "ResumeChallengeResponseDto": {
         "type": "object",
         "properties": {}
       },

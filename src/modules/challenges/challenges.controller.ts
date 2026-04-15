@@ -27,6 +27,9 @@ import {
   JoinChallengeDto,
   JoinChallengeResponseDto,
   LeaveChallengeResponseDto,
+  PauseChallengeResponseDto,
+  ResumeChallengeResponseDto,
+  StartChallengeResponseDto,
 } from './dto/join-challenge.dto';
 import { SubmitCommunityChallengeDto } from './dto/submit-community-challenge.dto';
 
@@ -117,15 +120,59 @@ export class ChallengesController {
   @ApiOperation({
     summary: 'Get challenge detail for user app',
     description:
-      'Returns challenge detail, user progress, checkpoints, chat action metadata, and attempt connection requirements.',
+      'Returns comprehensive challenge information including title, description, metrics, checkpoints, user participation status, progress percentage, active checkpoint sequence, and chat metadata. Includes Strava connection requirements and leaderboard context for user positioning.',
   })
   @ApiParam({
     name: 'id',
-    description: 'Challenge ID',
+    description: 'Challenge ID (CUID format)',
     example: 'cm8q1n1f50000kq3g7d9h2zab',
   })
-  @ApiOkResponse({ description: 'Challenge detail fetched successfully.' })
-  @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })
+  @ApiOkResponse({
+    description: 'Challenge detail fetched successfully.',
+    schema: {
+      example: {
+        success: true,
+        message: 'Challenge detail fetched',
+        data: {
+          id: 'cm8q1n1f50000kq3g7d9h2zab',
+          title: '100K Ultra Challenge',
+          subtitle: 'Winter 2026 Edition',
+          description: 'Complete 100 kilometers within 30 days',
+          path: 'ELITE_ATHLETE',
+          category: 'RUNNING',
+          difficulty: 'ADVANCED',
+          require_device_connection: true,
+          allow_manual_submission: false,
+          enable_chat: true,
+          is_featured: true,
+          challenge_country: 'US',
+          status: 'ACTIVE',
+          metrics: [{ metric_type: 'DISTANCE_KM', target_value: 100, is_required: true }],
+          checkpoints: [
+            { sequence: 1, title: '25K Milestone', metric_targets: { DISTANCE_KM: 25 }, is_required: true },
+            { sequence: 2, title: '50K Milestone', metric_targets: { DISTANCE_KM: 50 }, is_required: true }
+          ],
+          participation: {
+            id: 'part123',
+            status: 'IN_PROGRESS',
+            joined_at: '2026-04-15T10:00:00Z',
+            started_at: '2026-04-15T10:05:00Z',
+            completed_at: null,
+            progress_percent: 45,
+            active_checkpoint_seq: 2
+          },
+          conversation: {
+            id: 'conv123',
+            title: 'Ultra Challenge 2026',
+            type: 'GROUP',
+            membersCount: 23
+          }
+        }
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
+  @ApiBadRequestResponse({ description: 'Challenge not found or has been deleted.' })
   @Get(':id')
   async getUserChallengeDetail(
     @GetUser('userId') userId: string,
@@ -135,23 +182,69 @@ export class ChallengesController {
   }
 
   @ApiOperation({
-    summary: 'Get challenge leaderboard',
+    summary: 'Get challenge leaderboard with ranked standings',
     description:
-      'Returns leaderboard rows for the selected challenge, including rank, progress, finish time, and user profile snippets.',
+      'Returns ranked leaderboard for the specified challenge. Rankings based on: (1) completion status, (2) progress percentage, (3) finish_time_sec (excludes paused duration for fair comparison), (4) start time. Includes user profiles, metrics achieved, and your current position relative to other participants.',
   })
   @ApiParam({
     name: 'id',
-    description: 'Challenge ID',
+    description: 'Challenge ID (CUID format)',
     example: 'cm8q1n1f50000kq3g7d9h2zab',
   })
   @ApiQuery({
     name: 'limit',
     required: false,
-    description: 'Max leaderboard rows to return',
+    type: Number,
+    description: 'Number of top leaderboard rows to return (default: 50, max: 500)',
     example: 50,
   })
-  @ApiOkResponse({ description: 'Challenge leaderboard fetched successfully.' })
-  @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })
+  @ApiOkResponse({
+    description: 'Leaderboard fetched and ranked by completion criteria.',
+    schema: {
+      example: {
+        success: true,
+        message: 'Challenge leaderboard fetched',
+        data: {
+          challengeId: 'cm8q1n1f50000kq3g7d9h2zab',
+          totalParticipants: 23,
+          completed: 8,
+          yourRank: 5,
+          yourStatus: 'IN_PROGRESS',
+          leaderboard: [
+            {
+              rank: 1,
+              user: { id: 'usr1', name: 'John Doe', avatar: 'https://...' },
+              status: 'COMPLETED',
+              progress_percent: 100,
+              finished_at: '2026-04-10T15:30:00Z',
+              finish_time_sec: 86400,
+              metric_values: { DISTANCE_KM: 100, ELEVATION_M: 2000 }
+            },
+            {
+              rank: 2,
+              user: { id: 'usr2', name: 'Jane Smith', avatar: 'https://...' },
+              status: 'COMPLETED',
+              progress_percent: 100,
+              finished_at: '2026-04-11T08:00:00Z',
+              finish_time_sec: 130320,
+              metric_values: { DISTANCE_KM: 100, ELEVATION_M: 2000 }
+            },
+            {
+              rank: 5,
+              user: { id: 'usr_me', name: 'Your Name', avatar: 'https://...' },
+              status: 'IN_PROGRESS',
+              progress_percent: 45,
+              finished_at: null,
+              finish_time_sec: null,
+              metric_values: { DISTANCE_KM: 45, ELEVATION_M: 900 }
+            }
+          ]
+        }
+      },
+    },
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
+  @ApiBadRequestResponse({ description: 'Challenge not found or leaderboard not available.' })
   @Get(':id/leaderboard')
   async getChallengeLeaderboard(
     @GetUser('userId') userId: string,
@@ -166,22 +259,38 @@ export class ChallengesController {
   }
 
   @ApiOperation({
-    summary: 'Join a challenge as a participant',
+    summary: 'Join challenge - register as participant (NO timing start)',
     description:
-      'Creates a new participation or re-joins an existing one by resetting status to JOINED. Also auto-adds the user to the challenge group conversation and returns connection status.',
+      'Registers user as a challenge participant with status=JOINED and sets joined_at timestamp. Does NOT start challenge timing (started_at remains null). Validates Strava connection requirement. User must call POST /challenges/:id/start separately when ready to begin timing. Optional externalConnectionId body parameter: if provided, uses that specific connection; if omitted, uses primary active Strava connection.',
   })
   @ApiParam({
     name: 'id',
-    description: 'Challenge ID',
+    description: 'Challenge ID (CUID format)',
     example: 'cm8q1n1f50000kq3g7d9h2zab',
   })
+  @ApiBody({
+    type: JoinChallengeDto,
+    description: 'Join request. externalConnectionId is optional - omit to use default Strava connection.',
+    examples: {
+      minimal: {
+        summary: 'Use default Strava connection',
+        value: {},
+      },
+      withConnection: {
+        summary: 'Override with specific connection',
+        value: {
+          externalConnectionId: 'extconn_abc123xyz',
+        },
+      },
+    },
+  })
   @ApiOkResponse({
-    description: 'Successfully joined the challenge.',
+    description: 'Successfully registered for challenge. Ready to call start endpoint.',
     type: JoinChallengeResponseDto,
   })
-  @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
   @ApiBadRequestResponse({
-    description: 'Invalid challenge or missing connection.',
+    description: 'Challenge not found, already in progress, requires Strava but not connected, or participation already exists.',
   })
   @Post(':id/join')
   async joinChallenge(
@@ -193,22 +302,100 @@ export class ChallengesController {
   }
 
   @ApiOperation({
-    summary: 'Leave a challenge as a participant',
+    summary: 'Start challenge timing - begin active attempt',
     description:
-      'Marks the current participation as abandoned and removes the user from the challenge group conversation.',
+      'Begins challenge timing for an already-joined participation (status must be JOINED). Sets started_at timestamp and transitions status to IN_PROGRESS. Subsequent Strava activities with activity_date >= started_at are eligible for progress calculation. Activities during pause windows (logged challenge_paused/challenge_resumed events) are excluded. MUST be called after join endpoint. Empty body - uses Strava connection already selected/confirmed at join time.',
   })
   @ApiParam({
     name: 'id',
-    description: 'Challenge ID',
+    description: 'Challenge ID (CUID format)',
     example: 'cm8q1n1f50000kq3g7d9h2zab',
   })
   @ApiOkResponse({
-    description: 'Successfully left the challenge.',
+    description: 'Challenge started. Timing is now active. Ready for activities to be tracked.',
+    type: StartChallengeResponseDto,
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
+  @ApiBadRequestResponse({
+    description: 'Challenge not found, not joined first, already completed, Strava required but not connected, or invalid participation state.',
+  })
+  @Post(':id/start')
+  async startChallenge(
+    @GetUser('userId') userId: string,
+    @Param('id') challengeId: string,
+  ): Promise<StartChallengeResponseDto> {
+    return this.challengesService.startChallenge(userId, challengeId);
+  }
+
+  @ApiOperation({
+    summary: 'Pause challenge - suspend timer and exclude activities',
+    description:
+      'Pauses an active IN_PROGRESS challenge. Sets status=PAUSED and logs challenge_paused event with timestamp. Strava activities with timestamps within pause window (between pause and resume) are automatically excluded from progress calculation. Pause duration is subtracted from final finish_time_sec for fair leaderboard ranking. Only callable when status=IN_PROGRESS. Call resume endpoint to continue from pause point with original started_at preserved.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Challenge ID (CUID format)',
+    example: 'cm8q1n1f50000kq3g7d9h2zab',
+  })
+  @ApiOkResponse({
+    description: 'Challenge paused successfully. Pause event logged. Activities during pause excluded.',
+    type: PauseChallengeResponseDto,
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
+  @ApiBadRequestResponse({
+    description: 'Challenge not found, not in IN_PROGRESS status, already completed, or already paused.',
+  })
+  @Post(':id/pause')
+  async pauseChallenge(
+    @GetUser('userId') userId: string,
+    @Param('id') challengeId: string,
+  ): Promise<PauseChallengeResponseDto> {
+    return this.challengesService.pauseChallenge(userId, challengeId);
+  }
+
+  @ApiOperation({
+    summary: 'Resume paused challenge - continue from pause point',
+    description:
+      'Resumes a PAUSED challenge to IN_PROGRESS status. Logs challenge_resumed event with timestamp. Original started_at timestamp is preserved (NOT reset). Pause window is recorded in journey logs. Activities after resume continue counting toward progress. Pause duration automatically excluded from leaderboard finish_time_sec calculation for fair ranking. Only callable when status=PAUSED. Validates Strava connection still active if required by challenge.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Challenge ID (CUID format)',
+    example: 'cm8q1n1f50000kq3g7d9h2zab',
+  })
+  @ApiOkResponse({
+    description: 'Challenge resumed successfully. Pause window recorded. Ready for continued activity tracking.',
+    type: ResumeChallengeResponseDto,
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
+  @ApiBadRequestResponse({
+    description: 'Challenge not found, not in PAUSED status, Strava required but disconnected, or invalid participation state.',
+  })
+  @Post(':id/resume')
+  async resumeChallenge(
+    @GetUser('userId') userId: string,
+    @Param('id') challengeId: string,
+  ): Promise<ResumeChallengeResponseDto> {
+    return this.challengesService.resumeChallenge(userId, challengeId);
+  }
+
+  @ApiOperation({
+    summary: 'Leave challenge - abandon participation',
+    description:
+      'Abandons current challenge attempt and marks participation as ABANDONED. Removes user from challenge group conversation (if member). Can be called from any status (JOINED, IN_PROGRESS, PAUSED) except COMPLETED/ABANDONED. User can re-join using POST /challenges/:id/join endpoint afterward.',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'Challenge ID (CUID format)',
+    example: 'cm8q1n1f50000kq3g7d9h2zab',
+  })
+  @ApiOkResponse({
+    description: 'Left challenge successfully. Removed from group conversation.',
     type: LeaveChallengeResponseDto,
   })
-  @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
   @ApiBadRequestResponse({
-    description: 'Invalid challenge or participation state.',
+    description: 'Challenge not found, not joined, or already completed/abandoned.',
   })
   @Delete(':id/leave')
   async leaveChallenge(

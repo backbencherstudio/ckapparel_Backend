@@ -16,13 +16,58 @@ import { UserChallengesQueryDto } from './dto/user-challenges-query.dto';
 import { ConversationsService } from 'src/modules/chat/conversations/conversations.service';
 import { CreateCommunityChallengeDto } from 'src/modules/admin/challenges/dto/create-community-challenge.dto';
 import { NotificationRepository } from 'src/common/repository/notification/notification.repository';
+import { StravaChallengeProjectionService } from '../application/strava/strava-challenge-projection.service';
 
 @Injectable()
 export class ChallengesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly conversationsService: ConversationsService,
+    private readonly stravaChallengeProjectionService: StravaChallengeProjectionService,
   ) {}
+
+  private async resolveSelectedConnection(
+    userId: string,
+    requestedConnectionId?: string | null,
+  ) {
+    const userConnections = await this.prisma.externalConnection.findMany({
+      where: { user_id: userId, is_active: true },
+      select: { id: true, provider: true },
+    });
+
+    const stravaConnection = userConnections.find(
+      (c) => c.provider === FitnessProvider.STRAVA,
+    );
+
+    const selectedConnectionId =
+      requestedConnectionId &&
+      userConnections.some((c) => c.id === requestedConnectionId)
+        ? requestedConnectionId
+        : stravaConnection?.id || null;
+
+    const selectedConnection = selectedConnectionId
+      ? userConnections.find((c) => c.id === selectedConnectionId) || null
+      : null;
+
+    return {
+      userConnections,
+      selectedConnectionId,
+      selectedConnection,
+    };
+  }
+
+  private async rebuildStravaProjectionSafe(userId: string, connectionId?: string | null) {
+    if (!connectionId) return;
+
+    try {
+      await this.stravaChallengeProjectionService.rebuildUserProgress(
+        userId,
+        connectionId,
+      );
+    } catch (error) {
+      console.warn('Failed to rebuild Strava projection after challenge lifecycle update', error);
+    }
+  }
 
   private async createChallengeNotification(
     receiverId: string | undefined,
@@ -649,6 +694,15 @@ export class ChallengesService {
       challenge.conversation || legacyConversation || null,
     );
 
+    const canJoin = !participation;
+    const canStart =
+      Boolean(participation) &&
+      participation?.status === ParticipationStatus.JOINED &&
+      !lockState.isLocked &&
+      (!challenge.require_device_connection || connectionCount > 0);
+    const canPause = participation?.status === ParticipationStatus.IN_PROGRESS;
+    const canResume = participation?.status === ParticipationStatus.PAUSED;
+
     return {
       success: true,
       message: 'Challenge detail fetched successfully',
@@ -691,6 +745,9 @@ export class ChallengesService {
         userProgress: participation
           ? {
               status: participation.status,
+              joinedAt: participation.joined_at,
+              startedAt: participation.started_at,
+              completedAt: participation.completed_at,
               progressPercent: Number(participation.progress_percent || 0),
               activeCheckpointSeq: participation.active_checkpoint_seq,
               metricValues: participation.metric_values,
@@ -722,6 +779,26 @@ export class ChallengesService {
             canAttempt:
               !lockState.isLocked &&
               (!challenge.require_device_connection || connectionCount > 0),
+          },
+          join: {
+            enabled: true,
+            endpoint: `/challenges/${challenge.id}/join`,
+            canJoin,
+          },
+          start: {
+            enabled: true,
+            endpoint: `/challenges/${challenge.id}/start`,
+            canStart,
+          },
+          pause: {
+            enabled: true,
+            endpoint: `/challenges/${challenge.id}/pause`,
+            canPause,
+          },
+          resume: {
+            enabled: true,
+            endpoint: `/challenges/${challenge.id}/resume`,
+            canResume,
           },
         },
         lock: lockState,
@@ -918,7 +995,14 @@ export class ChallengesService {
         },
         participations: {
           where: { user_id: userId },
-          select: { id: true, status: true },
+          select: {
+            id: true,
+            user_id: true,
+            challenge_id: true,
+            status: true,
+            joined_at: true,
+            started_at: true,
+          },
         },
       },
     });
@@ -935,32 +1019,57 @@ export class ChallengesService {
 
     // Check Strava connection requirement/status.
     // This is challenge-level, so it works across all challenge paths.
-    const userConnections = await this.prisma.externalConnection.findMany({
-      where: { user_id: userId, is_active: true },
-      select: { id: true, provider: true },
-    });
-    const stravaConnection = userConnections.find(
-      (c) => c.provider === FitnessProvider.STRAVA,
-    );
-
-    const selectedConnectionId =
-      joinDto?.externalConnectionId &&
-      userConnections.some((c) => c.id === joinDto.externalConnectionId)
-        ? joinDto.externalConnectionId
-        : stravaConnection?.id || null;
-
-    const selectedConnection = selectedConnectionId
-      ? userConnections.find((c) => c.id === selectedConnectionId) || null
-      : null;
+    const { selectedConnectionId, selectedConnection } =
+      await this.resolveSelectedConnection(
+        userId,
+        joinDto?.externalConnectionId,
+      );
 
     const stravaRequired = Boolean(challenge.require_device_connection);
 
     // Create or update participation record
     let participation;
     if (challenge.participations.length > 0) {
-      // User already joined before, reset their status to JOINED (re-join)
+      const existingParticipation = challenge.participations[0];
+
+      if (
+        existingParticipation.status === ParticipationStatus.IN_PROGRESS ||
+        existingParticipation.status === ParticipationStatus.PAUSED
+      ) {
+        return {
+          success: true,
+          message:
+            existingParticipation.status === ParticipationStatus.PAUSED
+              ? 'Paused attempt exists. Please resume to continue.'
+              : 'Challenge already in progress',
+          data: {
+            id: existingParticipation.id,
+            challengeId: existingParticipation.challenge_id,
+            userId: existingParticipation.user_id,
+            status: existingParticipation.status,
+            joinedAt: existingParticipation.joined_at,
+            startedAt: existingParticipation.started_at,
+            conversation: challenge.conversation
+              ? {
+                  id: challenge.conversation.id,
+                  title: challenge.conversation.title,
+                  type: challenge.conversation.type,
+                  membersCount: challenge.conversation.memberships?.length || 0,
+                }
+              : null,
+            strava: {
+              connected: !!selectedConnection,
+              required: stravaRequired,
+              externalConnectionId: selectedConnection?.id,
+            },
+            canStart: false,
+          },
+        };
+      }
+
+      // User already joined before and can re-join from JOINED/ABANDONED/DISQUALIFIED states.
       participation = await this.prisma.challengeParticipation.update({
-        where: { id: challenge.participations[0].id },
+        where: { id: existingParticipation.id },
         data: {
           status: ParticipationStatus.JOINED,
           external_connection_id: selectedConnectionId,
@@ -968,6 +1077,13 @@ export class ChallengesService {
             ? FitnessProvider.STRAVA
             : FitnessProvider.MANUAL,
           joined_at: new Date(),
+          started_at: null,
+          completed_at: null,
+          last_activity_at: null,
+          last_synced_at: null,
+          progress_percent: 0,
+          metric_values: null,
+          active_checkpoint_seq: 1,
         },
       });
     } else {
@@ -1044,33 +1160,287 @@ export class ChallengesService {
     );
 
     return {
-      id: participation.id,
-      challengeId: participation.challenge_id,
-      userId: participation.user_id,
-      status: participation.status,
-      joinedAt: participation.joined_at,
-      conversation: conversation
-        ? {
-            id: conversation.id,
-            title: conversation.title,
-            type: conversation.type,
-            membersCount: conversation.memberships?.length || 0,
-          }
-        : null,
-      strava: {
-        connected: !!selectedConnection,
-        required: stravaRequired,
-        connectionUrl:
-          stravaRequired && !selectedConnection
-            ? `${process.env.APP_FRONTEND_URL || 'https://yourapp.com'}/auth/strava`
-            : undefined,
-        externalConnectionId: selectedConnection?.id,
-      },
-      canStart: !stravaRequired || !!selectedConnection,
+      success: true,
       message:
         stravaRequired && !selectedConnection
-          ? 'Elite challenges require Strava connection. Please connect your Strava account to start.'
-          : 'Successfully joined the challenge. You can now start if all requirements are met.',
+          ? 'Joined challenge. Strava connection required to start.'
+          : 'Challenge joined successfully',
+      data: {
+        id: participation.id,
+        challengeId: participation.challenge_id,
+        userId: participation.user_id,
+        status: participation.status,
+        joinedAt: participation.joined_at,
+        startedAt: participation.started_at,
+        conversation: conversation
+          ? {
+              id: conversation.id,
+              title: conversation.title,
+              type: conversation.type,
+              membersCount: conversation.memberships?.length || 0,
+            }
+          : null,
+        strava: {
+          connected: !!selectedConnection,
+          required: stravaRequired,
+          connectionUrl:
+            stravaRequired && !selectedConnection
+              ? `${process.env.APP_FRONTEND_URL || 'https://yourapp.com'}/auth/strava`
+              : undefined,
+          externalConnectionId: selectedConnection?.id,
+        },
+        canStart: !stravaRequired || !!selectedConnection,
+      },
+    };
+  }
+
+  async startChallenge(userId: string, challengeId: string) {
+    const challenge = await this.prisma.challenges.findUnique({
+      where: { id: challengeId },
+      include: {
+        participations: {
+          where: { user_id: userId },
+          take: 1,
+        },
+      },
+    });
+
+    if (!challenge || challenge.deleted_at) {
+      throw new BadRequestException('Challenge not found or has been deleted');
+    }
+
+    if (challenge.status !== ChallengeStatus.ACTIVE) {
+      throw new BadRequestException(
+        `Challenge is not active (status: ${challenge.status})`,
+      );
+    }
+
+    const participation = challenge.participations?.[0] || null;
+    if (!participation) {
+      throw new ConflictException('Join challenge first before starting');
+    }
+
+    if (participation.status === ParticipationStatus.COMPLETED) {
+      throw new BadRequestException('Challenge already completed');
+    }
+
+    if (participation.status === ParticipationStatus.ABANDONED) {
+      throw new BadRequestException('Re-join challenge before starting');
+    }
+
+    const { selectedConnection } = await this.resolveSelectedConnection(
+      userId,
+      participation.external_connection_id,
+    );
+
+    if (challenge.require_device_connection && !selectedConnection) {
+      throw new BadRequestException(
+        'This challenge requires a Strava connection before starting',
+      );
+    }
+
+    const startedAt = participation.started_at || new Date();
+
+    const updatedParticipation = await this.prisma.challengeParticipation.update({
+      where: { id: participation.id },
+      data: {
+        status: ParticipationStatus.IN_PROGRESS,
+        started_at: startedAt,
+      },
+    });
+
+    await this.prisma.challengeJourneyLog.create({
+      data: {
+        user_id: userId,
+        challenge_id: challengeId,
+        participation_id: participation.id,
+        event_type: 'challenge_started',
+        message: 'Challenge attempt started',
+        source_provider:
+          participation.source_provider || FitnessProvider.MANUAL,
+        metadata: {
+          started_at: startedAt,
+          external_connection_id: participation.external_connection_id,
+        },
+      },
+    });
+
+    await this.rebuildStravaProjectionSafe(userId, participation.external_connection_id);
+
+    return {
+      success: true,
+      message: 'Challenge started successfully',
+      data: {
+        id: updatedParticipation.id,
+        challengeId,
+        userId,
+        status: updatedParticipation.status,
+        startedAt,
+        joinedAt: updatedParticipation.joined_at,
+      },
+    };
+  }
+
+  async pauseChallenge(userId: string, challengeId: string) {
+    const participation = await this.prisma.challengeParticipation.findUnique({
+      where: {
+        user_id_challenge_id: {
+          user_id: userId,
+          challenge_id: challengeId,
+        },
+      },
+      include: {
+        challenge: {
+          select: {
+            id: true,
+            deleted_at: true,
+          },
+        },
+      },
+    });
+
+    if (!participation || participation.challenge.deleted_at) {
+      throw new BadRequestException('Challenge not found');
+    }
+
+    if (participation.status === ParticipationStatus.COMPLETED) {
+      throw new BadRequestException('Completed challenge cannot be paused');
+    }
+
+    if (participation.status !== ParticipationStatus.IN_PROGRESS) {
+      throw new BadRequestException('Only in-progress challenge can be paused');
+    }
+
+    const pausedAt = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.challengeParticipation.update({
+        where: { id: participation.id },
+        data: {
+          status: ParticipationStatus.PAUSED,
+          last_activity_at: pausedAt,
+        },
+      });
+
+      await tx.challengeJourneyLog.create({
+        data: {
+          user_id: userId,
+          challenge_id: challengeId,
+          participation_id: participation.id,
+          event_type: 'challenge_paused',
+          message: 'Challenge paused by user',
+          source_provider:
+            participation.source_provider || FitnessProvider.MANUAL,
+          metadata: {
+            paused_at: pausedAt,
+          },
+        },
+      });
+    });
+
+    await this.rebuildStravaProjectionSafe(
+      userId,
+      participation.external_connection_id,
+    );
+
+    return {
+      success: true,
+      message: 'Challenge paused successfully',
+      data: {
+        challengeId,
+        userId,
+        status: ParticipationStatus.PAUSED,
+        pausedAt,
+      },
+    };
+  }
+
+  async resumeChallenge(userId: string, challengeId: string) {
+    const challenge = await this.prisma.challenges.findUnique({
+      where: { id: challengeId },
+      include: {
+        participations: {
+          where: { user_id: userId },
+          take: 1,
+        },
+      },
+    });
+
+    if (!challenge || challenge.deleted_at) {
+      throw new BadRequestException('Challenge not found or has been deleted');
+    }
+
+    const participation = challenge.participations?.[0] || null;
+    if (!participation) {
+      throw new BadRequestException('Challenge is not joined');
+    }
+
+    if (participation.status === ParticipationStatus.COMPLETED) {
+      throw new BadRequestException('Completed challenge cannot be resumed');
+    }
+
+    if (participation.status !== ParticipationStatus.PAUSED) {
+      throw new BadRequestException('Only paused challenge can be resumed');
+    }
+
+    const { selectedConnectionId, selectedConnection } =
+      await this.resolveSelectedConnection(
+        userId,
+        participation.external_connection_id,
+      );
+
+    if (challenge.require_device_connection && !selectedConnection) {
+      throw new BadRequestException(
+        'This challenge requires an active Strava connection before resuming',
+      );
+    }
+
+    const resumedAt = new Date();
+    const startedAt = participation.started_at || resumedAt;
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.challengeParticipation.update({
+        where: { id: participation.id },
+        data: {
+          status: ParticipationStatus.IN_PROGRESS,
+          started_at: startedAt,
+          external_connection_id: selectedConnectionId,
+          source_provider: selectedConnection
+            ? FitnessProvider.STRAVA
+            : FitnessProvider.MANUAL,
+          last_activity_at: resumedAt,
+        },
+      });
+
+      await tx.challengeJourneyLog.create({
+        data: {
+          user_id: userId,
+          challenge_id: challengeId,
+          participation_id: participation.id,
+          event_type: 'challenge_resumed',
+          message: 'Challenge resumed by user',
+          source_provider: selectedConnection
+            ? FitnessProvider.STRAVA
+            : FitnessProvider.MANUAL,
+          metadata: {
+            resumed_at: resumedAt,
+          },
+        },
+      });
+    });
+
+    await this.rebuildStravaProjectionSafe(userId, selectedConnectionId);
+
+    return {
+      success: true,
+      message: 'Challenge resumed successfully',
+      data: {
+        challengeId,
+        userId,
+        status: ParticipationStatus.IN_PROGRESS,
+        resumedAt,
+        startedAt,
+      },
     };
   }
 
@@ -1141,19 +1511,22 @@ export class ChallengesService {
     );
 
     return {
-      challengeId,
-      userId,
-      status: ParticipationStatus.ABANDONED,
-      leftAt,
-      conversation: conversation
-        ? {
-            id: conversation.id,
-            title: challenge.title,
-            type: conversation.type,
-            membersCount: conversation.memberships?.length || 0,
-          }
-        : null,
-      message: 'You have left the challenge successfully',
+      success: true,
+      message: 'Challenge left successfully',
+      data: {
+        challengeId,
+        userId,
+        status: ParticipationStatus.ABANDONED,
+        leftAt,
+        conversation: conversation
+          ? {
+              id: conversation.id,
+              title: challenge.title,
+              type: conversation.type,
+              membersCount: conversation.memberships?.length || 0,
+            }
+          : null,
+      },
     };
   }
 

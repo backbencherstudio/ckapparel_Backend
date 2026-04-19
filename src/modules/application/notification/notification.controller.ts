@@ -30,6 +30,7 @@ import { UpdateNotificationSettingsDto } from './dto/update-notification-setting
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
+  @ApiBearerAuth('admin_token')
   @ApiTags('Admin Notifications')
   @ApiOperation({
     summary: 'Get current user notification settings',
@@ -44,6 +45,7 @@ export class NotificationController {
     return this.notificationService.getNotificationSettings(userId);
   }
 
+  @ApiBearerAuth('admin_token')
   @ApiTags('Admin Notifications')
   @ApiOperation({
     summary: 'Update current user notification settings',

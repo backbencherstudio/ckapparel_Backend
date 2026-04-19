@@ -146,6 +146,12 @@ export class StravaChallengeProjectionService {
       const relevantActivities = activities.filter((activity) => {
         if (activity.activity_date < participation.started_at!) return false;
         if (
+          participation.completed_at &&
+          activity.activity_date > participation.completed_at
+        ) {
+          return false;
+        }
+        if (
           !this.matchesChallengeCategory(
             participation.challenge.category,
             activity,

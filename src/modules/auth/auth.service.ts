@@ -124,20 +124,21 @@ export class AuthService {
       }
 
       // Get challenge participation statistics
-      const [joinedCount, inProgressCount, completedCount, createdCount] = await Promise.all([
-        this.prisma.challengeParticipation.count({
-          where: { user_id: userId, status: 'JOINED' },
-        }),
-        this.prisma.challengeParticipation.count({
-          where: { user_id: userId, status: 'IN_PROGRESS' },
-        }),
-        this.prisma.challengeParticipation.count({
-          where: { user_id: userId, status: 'COMPLETED' },
-        }),
-        this.prisma.challenges.count({
-          where: { creator: { id: userId } },
-        }),
-      ]);
+      const [joinedCount, inProgressCount, completedCount, createdCount] =
+        await Promise.all([
+          this.prisma.challengeParticipation.count({
+            where: { user_id: userId, status: 'JOINED' },
+          }),
+          this.prisma.challengeParticipation.count({
+            where: { user_id: userId, status: 'IN_PROGRESS' },
+          }),
+          this.prisma.challengeParticipation.count({
+            where: { user_id: userId, status: 'COMPLETED' },
+          }),
+          this.prisma.challenges.count({
+            where: { creator: { id: userId } },
+          }),
+        ]);
 
       const stats = {
         joined: joinedCount,
@@ -426,6 +427,11 @@ export class AuthService {
           data.avatar = mediaUrl;
         } catch (err: any) {
           console.warn('Avatar upload failed:', err.message || err);
+          return {
+            success: false,
+            message: 'Failed to upload avatar image. Please try again.',
+            avatarUploadError: err.message || 'Unknown error',
+          };
         }
       }
 
@@ -449,7 +455,7 @@ export class AuthService {
 
         return {
           success: true,
-          message: 'User updated successfully',
+          message: 'Profile updated successfully',
         };
       } else {
         return {

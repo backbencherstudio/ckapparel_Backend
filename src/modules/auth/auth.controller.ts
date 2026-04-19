@@ -37,7 +37,6 @@ import { AppleAuthGuard } from './guards/apple-auth.guard';
 import { AppleMobileDto } from './dto/apple-mobile.dto';
 import { GoogleMobileDto } from './dto/google-mobile.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
-import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { GetUser } from './decorators/get-user.decorator';
 
@@ -163,7 +162,49 @@ export class AuthController {
     description:
       'Authenticates user with email/password and returns access + refresh tokens.',
   })
-  @ApiBody({ type: LoginDto })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['email', 'password', 'login_as'],
+      properties: {
+        email: {
+          type: 'string',
+          example: 'sazedul.islam@example.com',
+          description: 'Email used for authentication.',
+        },
+        password: {
+          type: 'string',
+          example: 'password123',
+          description: 'Account password.',
+        },
+        login_as: {
+          type: 'string',
+          enum: ['user', 'admin'],
+          example: 'user',
+          description:
+            'Select login audience for client-side flow. Authentication still validates credentials against the matched account.',
+        },
+      },
+    },
+    examples: {
+      userLogin: {
+        summary: 'User login',
+        value: {
+          email: 'sazedul.user@example.com',
+          password: 'UserPassword123!',
+          login_as: 'user',
+        },
+      },
+      adminLogin: {
+        summary: 'Admin login',
+        value: {
+          email: 'sazedul.admin@example.com',
+          password: 'AdminPassword123!',
+          login_as: 'admin',
+        },
+      },
+    },
+  })
   @ApiOkResponse({ description: 'Login successful.' })
   @ApiUnauthorizedResponse({ description: 'Invalid credentials.' })
   @UseGuards(LocalAuthGuard)

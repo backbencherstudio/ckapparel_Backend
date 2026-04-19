@@ -226,7 +226,51 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/LoginDto"
+                "type": "object",
+                "required": [
+                  "email",
+                  "password",
+                  "login_as"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "example": "sazedul.islam@example.com",
+                    "description": "Email used for authentication."
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "password123",
+                    "description": "Account password."
+                  },
+                  "login_as": {
+                    "type": "string",
+                    "enum": [
+                      "user",
+                      "admin"
+                    ],
+                    "example": "user",
+                    "description": "Select login audience for client-side flow. Authentication still validates credentials against the matched account."
+                  }
+                }
+              },
+              "examples": {
+                "userLogin": {
+                  "summary": "User login",
+                  "value": {
+                    "email": "sazedul.user@example.com",
+                    "password": "UserPassword123!",
+                    "login_as": "user"
+                  }
+                },
+                "adminLogin": {
+                  "summary": "Admin login",
+                  "value": {
+                    "email": "sazedul.admin@example.com",
+                    "password": "AdminPassword123!",
+                    "login_as": "admin"
+                  }
+                }
               }
             }
           }
@@ -674,6 +718,9 @@
         "security": [
           {
             "user_token": []
+          },
+          {
+            "admin_token": []
           }
         ],
         "summary": "Get current user notification settings",
@@ -713,6 +760,9 @@
         "security": [
           {
             "user_token": []
+          },
+          {
+            "admin_token": []
           }
         ],
         "summary": "Update current user notification settings",
@@ -6537,25 +6587,6 @@
         "required": [
           "otp",
           "email"
-        ]
-      },
-      "LoginDto": {
-        "type": "object",
-        "properties": {
-          "email": {
-            "type": "string",
-            "description": "The email of the user",
-            "example": "sazedul.islam@example.com"
-          },
-          "password": {
-            "type": "string",
-            "description": "The password of the user",
-            "example": "password123"
-          }
-        },
-        "required": [
-          "email",
-          "password"
         ]
       },
       "RefreshTokenDto": {

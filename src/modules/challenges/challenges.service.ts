@@ -56,6 +56,37 @@ export class ChallengesService {
     };
   }
 
+  private async getActiveChallengeParticipation(
+    userId: string,
+    excludeChallengeId?: string,
+  ) {
+    return this.prisma.challengeParticipation.findFirst({
+      where: {
+        user_id: userId,
+        deleted_at: null,
+        status: {
+          in: [ParticipationStatus.IN_PROGRESS, ParticipationStatus.PAUSED],
+        },
+        ...(excludeChallengeId
+          ? { challenge_id: { not: excludeChallengeId } }
+          : {}),
+      },
+      select: {
+        id: true,
+        challenge_id: true,
+        status: true,
+        started_at: true,
+        challenge: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+      },
+      orderBy: { started_at: 'desc' },
+    });
+  }
+
   private async rebuildStravaProjectionSafe(userId: string, connectionId?: string | null) {
     if (!connectionId) return;
 
@@ -1026,6 +1057,10 @@ export class ChallengesService {
       );
 
     const stravaRequired = Boolean(challenge.require_device_connection);
+    const activeChallenge = await this.getActiveChallengeParticipation(
+      userId,
+      challengeId,
+    );
 
     // Create or update participation record
     let participation;
@@ -1161,8 +1196,9 @@ export class ChallengesService {
 
     return {
       success: true,
-      message:
-        stravaRequired && !selectedConnection
+      message: activeChallenge
+        ? `Joined challenge. Finish or pause your active challenge "${activeChallenge.challenge.title}" before starting this one.`
+        : stravaRequired && !selectedConnection
           ? 'Joined challenge. Strava connection required to start.'
           : 'Challenge joined successfully',
       data: {
@@ -1189,7 +1225,7 @@ export class ChallengesService {
               : undefined,
           externalConnectionId: selectedConnection?.id,
         },
-        canStart: !stravaRequired || !!selectedConnection,
+        canStart: (!stravaRequired || !!selectedConnection) && !activeChallenge,
       },
     };
   }
@@ -1226,6 +1262,16 @@ export class ChallengesService {
 
     if (participation.status === ParticipationStatus.ABANDONED) {
       throw new BadRequestException('Re-join challenge before starting');
+    }
+
+    const activeChallenge = await this.getActiveChallengeParticipation(
+      userId,
+      challengeId,
+    );
+    if (activeChallenge) {
+      throw new ConflictException(
+        `You already have an active challenge "${activeChallenge.challenge.title}". Finish or pause it before starting another challenge.`,
+      );
     }
 
     const { selectedConnection } = await this.resolveSelectedConnection(
@@ -1381,6 +1427,16 @@ export class ChallengesService {
 
     if (participation.status !== ParticipationStatus.PAUSED) {
       throw new BadRequestException('Only paused challenge can be resumed');
+    }
+
+    const activeChallenge = await this.getActiveChallengeParticipation(
+      userId,
+      challengeId,
+    );
+    if (activeChallenge) {
+      throw new ConflictException(
+        `You already have an active challenge "${activeChallenge.challenge.title}". Finish or pause it before resuming another challenge.`,
+      );
     }
 
     const { selectedConnectionId, selectedConnection } =

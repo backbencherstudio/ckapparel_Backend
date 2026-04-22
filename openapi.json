@@ -6630,8 +6630,8 @@
     }
   },
   "info": {
-    "title": "Limitless App API",
-    "description": "Limitless App API documentation | Maintainer: Sazedul Islam | Contact: sazedul.bdcalling@gmail.com",
+    "title": "Limitless App API Documentation",
+    "description": "This is a athlete challenge and community platform with role-based authentication, Strava integration (webhook and sync), challenge lifecycle tracking (join/start/pause/resume), sponsorship hub, quotations, notifications, and admin analytics dashboards. Built with NestJS, PostgreSQL, Redis, and integrated with third-party services like Strava, AWS S3, and SendGrid. Designed for scalability, security, and extensibility to support a growing user base and evolving feature set.\n- Company: Limitless Inc.\n- Maintainer: Sazedul Islam\n- Contact: sazedul.bdcalling@gmail.com",
     "version": "1.0.0",
     "contact": {}
   },

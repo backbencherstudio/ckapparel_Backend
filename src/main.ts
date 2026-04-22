@@ -23,6 +23,8 @@ function getAppProfileFromEnv() {
   const clientUrl = process.env.CLIENT_APP_URL || null;
   const appVersion =
     process.env.APP_VERSION || process.env.npm_package_version || null;
+  const appDescription =
+    process.env.APP_DESCRIPTION || process.env.npm_package_description || null;
 
   const developerName =
     process.env.APP_DEVELOPER_NAME ||
@@ -43,6 +45,7 @@ function getAppProfileFromEnv() {
     appUrl,
     clientUrl,
     appVersion,
+    appDescription,
     developerName,
     developerEmail,
     companyName,
@@ -201,16 +204,19 @@ async function bootstrap() {
 
   // swagger
   const profile = getAppProfileFromEnv();
-  const swaggerDescriptionParts = [
-    `${profile.appName} API documentation`,
-    profile.companyName ? `Company: ${profile.companyName}` : null,
-    profile.developerName ? `Maintainer: ${profile.developerName}` : null,
-    profile.developerEmail ? `Contact: ${profile.developerEmail}` : null,
-  ].filter(Boolean);
+  const swaggerDescription = [
+    // `## ${profile.appName} API Documentation`,
+    profile.appDescription || 'API documentation for the application.',
+    profile.companyName ? `- Company: ${profile.companyName}` : null,
+    profile.developerName ? `- Maintainer: ${profile.developerName}` : null,
+    profile.developerEmail ? `- Contact: ${profile.developerEmail}` : null,
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   const options = new DocumentBuilder()
-    .setTitle(`${profile.appName} API`)
-    .setDescription(swaggerDescriptionParts.join(' | '))
+    .setTitle(`${profile.appName} API Documentation`)
+    .setDescription(swaggerDescription)
     .setVersion(profile.appVersion || '1.0')
     .addTag(profile.appName)
     .addBearerAuth(

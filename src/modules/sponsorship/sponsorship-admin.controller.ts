@@ -30,7 +30,7 @@ import { AdminUpdateSponsorshipStatusBodyDto } from './dto/admin-update-sponsors
 @ApiTags('Admin Sponsorship Management')
 @ApiBearerAuth('admin_token')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
+@Roles(Role.ADMIN || Role.SUPER_ADMIN)
 @Controller('admin/sponsorship')
 export class SponsorshipController {
   constructor(private readonly sponsorshipService: SponsorshipService) {}

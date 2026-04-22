@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   ChallengeDifficulty,
   ChallengePath,
@@ -570,7 +574,10 @@ export class ChallengesService {
       where: { id: userId },
       select: { type: true, name: true, country: true, avatar: true },
     });
-    if (!user || (user.type !== 'su_admin' && user.type !== 'ADMIN')) {
+
+    console.log('Admin fetching challenges with params:', user);
+
+    if (!user || (user.type !== 'su_admin' && user.type !== 'admin')) {
       throw new BadRequestException('Unauthorized');
     }
 
@@ -662,7 +669,7 @@ export class ChallengesService {
         subtitle: c.subtitle,
         createdBy:
           c.creator?.type == 'ADMIN' || c.creator?.type == 'su_admin'
-            ? 'Admin'
+            ? 'admin'
             : { name: c.creator?.name, avatar: c.creator?.avatar },
         category: c.category,
         difficulty: c.difficulty,
@@ -682,7 +689,7 @@ export class ChallengesService {
         participants: c.participants_joined,
         createdBy:
           c.creator?.type == 'ADMIN' || c.creator?.type == 'su_admin'
-            ? 'Admin'
+            ? 'admin'
             : { name: c.creator?.name, avatar: c.creator?.avatar },
         status: c.status,
         actions: { edit: c.id, delete: c.id },

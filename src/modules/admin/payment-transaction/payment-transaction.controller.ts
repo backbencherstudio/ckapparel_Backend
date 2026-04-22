@@ -19,7 +19,7 @@ import { Request } from 'express';
 @ApiBearerAuth('admin_token')
 @ApiTags('Admin Payment transaction')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
+@Roles(Role.ADMIN || Role.SUPER_ADMIN)
 @Controller('admin/payment-transaction')
 @ApiExcludeController() // Hide from Swagger docs
 export class PaymentTransactionController {

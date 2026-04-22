@@ -35,7 +35,7 @@ import { CreateRoutePlanDto } from './dto/create-route-plan.dto';
 @ApiBearerAuth('admin_token')
 @ApiTags('Admin Route Planning Management')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
+@Roles(Role.ADMIN || Role.SUPER_ADMIN)
 @Controller('admin/challenges')
 export class RoutePlanningController {
   constructor(private readonly challengesService: ChallengesService) {}

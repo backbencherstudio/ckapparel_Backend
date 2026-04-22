@@ -30,7 +30,7 @@ import { RolesGuard } from '../../../common/guard/role/roles.guard';
 @ApiBearerAuth('admin_token')
 @ApiTags('Admin Faq')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
+@Roles(Role.ADMIN || Role.SUPER_ADMIN)
 @Controller('admin/faq')
 @ApiExcludeController() // Hide from Swagger docs
 export class FaqController {

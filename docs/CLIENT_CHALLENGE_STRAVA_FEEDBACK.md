@@ -25,7 +25,7 @@ Thank you for raising these important questions about our challenge system. Let 
 
 ---
 
-### **2. Distance Accuracy & Tolerance**
+### **2. Distance Accuracy & Tolerance**0
 
 **Your Scenario: 5km Challenge with 5.02km Run**
 

@@ -4245,6 +4245,92 @@
         ]
       }
     },
+    "/api/admin/dashboard/cards": {
+      "get": {
+        "description": "Returns card metrics for admin dashboard: total athletes, active challenges, open sponsorships, and quotation requests with weekly changes.",
+        "operationId": "DashboardController_getCards",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Dashboard cards fetched successfully."
+          },
+          "401": {
+            "description": "Unauthorized request."
+          }
+        },
+        "security": [
+          {
+            "admin_token": []
+          }
+        ],
+        "summary": "Get top summary cards",
+        "tags": [
+          "Admin Dashboard"
+        ]
+      }
+    },
+    "/api/admin/dashboard/athletes-trend": {
+      "get": {
+        "description": "Returns monthly trend for registered athletes and active athletes for chart rendering.",
+        "operationId": "DashboardController_getAthletesTrend",
+        "parameters": [
+          {
+            "name": "months",
+            "required": false,
+            "in": "query",
+            "description": "Trend window in months (3 to 12). Default is 6.",
+            "schema": {
+              "minimum": 3,
+              "maximum": 12,
+              "default": 6,
+              "example": 6,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Athletes trend fetched successfully."
+          },
+          "401": {
+            "description": "Unauthorized request."
+          }
+        },
+        "security": [
+          {
+            "admin_token": []
+          }
+        ],
+        "summary": "Get registered vs active athletes trend",
+        "tags": [
+          "Admin Dashboard"
+        ]
+      }
+    },
+    "/api/admin/dashboard/challenge-participants": {
+      "get": {
+        "description": "Returns total challenge participants and percentage split by challenge path (Monthly, Virtual, Community, Elite).",
+        "operationId": "DashboardController_getChallengeParticipants",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Challenge participants breakdown fetched successfully."
+          },
+          "401": {
+            "description": "Unauthorized request."
+          }
+        },
+        "security": [
+          {
+            "admin_token": []
+          }
+        ],
+        "summary": "Get challenge participants donut breakdown",
+        "tags": [
+          "Admin Dashboard"
+        ]
+      }
+    },
     "/api/conversations/{id}/messages": {
       "get": {
         "operationId": "MessagesController_list",

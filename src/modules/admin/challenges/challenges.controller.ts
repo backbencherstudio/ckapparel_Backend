@@ -284,7 +284,7 @@ const COMMUNITY_CHALLENGE_EXAMPLE = {
 @ApiBearerAuth('admin_token')
 @ApiTags('Admin Challenges Management')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
+@Roles(Role.ADMIN || Role.SUPER_ADMIN)
 @Controller('admin/challenges')
 export class ChallengesController {
   constructor(private readonly challengesService: ChallengesService) {}
@@ -691,5 +691,4 @@ export class ChallengesController {
       };
     }
   }
-
 }

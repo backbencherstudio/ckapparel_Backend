@@ -73,7 +73,7 @@ export class QuotationController {
   })
   @ApiBearerAuth('admin_token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN || Role.SUPER_ADMIN)
   @ApiQuery({
     name: 'page',
     required: false,
@@ -126,7 +126,7 @@ export class QuotationController {
   })
   @ApiBearerAuth('admin_token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN || Role.SUPER_ADMIN)
   @ApiOkResponse({
     description: 'Quotation fetched successfully.',
   })
@@ -150,7 +150,7 @@ export class QuotationController {
   })
   @ApiBearerAuth('admin_token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN || Role.SUPER_ADMIN)
   @ApiOkResponse({
     description: 'Quotation status updated successfully.',
   })
@@ -212,7 +212,7 @@ export class QuotationController {
   })
   @ApiBearerAuth('admin_token')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN || Role.SUPER_ADMIN)
   @UseInterceptors(
     FileInterceptor('attachment', {
       storage: multer.memoryStorage() as any,
@@ -225,7 +225,8 @@ export class QuotationController {
   @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })
   @ApiForbiddenResponse({ description: 'Forbidden - Admin only.' })
   @ApiBadRequestResponse({
-    description: 'Invalid payload, quotation id, or unsupported attachment type.',
+    description:
+      'Invalid payload, quotation id, or unsupported attachment type.',
   })
   @ApiParam({ name: 'id', type: String, description: 'Quotation ID' })
   @Post(':id/reply')
@@ -234,9 +235,10 @@ export class QuotationController {
     @Body() replyQuotationDto: ReplyQuotationDto,
     @UploadedFile() attachment?: Express.Multer.File,
   ) {
-    return this.quotationService.replyQuotation(id, replyQuotationDto, attachment);
+    return this.quotationService.replyQuotation(
+      id,
+      replyQuotationDto,
+      attachment,
+    );
   }
-
-  
-
 }

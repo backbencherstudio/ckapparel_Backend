@@ -33,7 +33,7 @@ import { Role } from '../../../common/guard/role/role.enum';
 @ApiBearerAuth('admin_token')
 @ApiTags('Admin Website Info')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
+@Roles(Role.ADMIN || Role.SUPER_ADMIN)
 @Controller('admin/website-info')
 @ApiExcludeController() // Hide from Swagger docs
 export class WebsiteInfoController {

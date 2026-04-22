@@ -32,7 +32,7 @@ import { GetUser } from '../../auth/decorators/get-user.decorator';
 @ApiTags('Admin Profile')
 @ApiBearerAuth('admin_token')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
+@Roles(Role.ADMIN || Role.SUPER_ADMIN)
 @Controller('admin/profile')
 export class ProfileController {
   constructor(private readonly profileService: ProfileService) {}

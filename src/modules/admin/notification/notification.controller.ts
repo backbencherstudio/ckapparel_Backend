@@ -19,7 +19,7 @@ import { GetUser } from '../../../modules/auth/decorators/get-user.decorator';
 @ApiBearerAuth('admin_token')
 @ApiTags('Admin Notifications')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
+@Roles(Role.ADMIN || Role.SUPER_ADMIN)
 @Controller('admin/notifications')
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}

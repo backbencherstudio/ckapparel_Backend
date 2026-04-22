@@ -383,7 +383,7 @@ export class StravaController {
     description: 'Missing STRAVA_WEBHOOK_CALLBACK_URL or STRAVA_WEBHOOK_VERIFY_TOKEN environment variables.',
   })
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN || Role.SUPER_ADMIN)
   @Post('strava/webhook/subscription')
   async createSubscription() {
     return this.stravaService.createWebhookSubscription();
@@ -411,7 +411,7 @@ export class StravaController {
   @ApiUnauthorizedResponse({ description: 'Missing or invalid admin access token.' })
   @ApiForbiddenResponse({ description: 'Forbidden - Admin role required.' })
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN || Role.SUPER_ADMIN)
   @Get('strava/webhook/subscription')
   async getSubscription() {
     return this.stravaService.getWebhookSubscription();
@@ -442,7 +442,7 @@ export class StravaController {
   @ApiForbiddenResponse({ description: 'Forbidden - Admin role required.' })
   @ApiBadRequestResponse({ description: 'Invalid or non-existent subscription ID.' })
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
+  @Roles(Role.ADMIN || Role.SUPER_ADMIN)
   @Delete('strava/webhook/subscription')
   async deleteSubscription(@Query('id') id: string) {
     return this.stravaService.deleteWebhookSubscription(id);

@@ -8,6 +8,7 @@ import { NotificationModule } from './notification/notification.module';
 import { ChallengesModule } from './challenges/challenges.module';
 import { SupportPlanModule } from './support-plan/support-plan.module';
 import { ProfileModule } from './profile/profile.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { ProfileModule } from './profile/profile.module';
     ChallengesModule,
     SupportPlanModule,
     ProfileModule,
+    DashboardModule,
   ],
   providers: [],
   exports: [ChallengesModule],

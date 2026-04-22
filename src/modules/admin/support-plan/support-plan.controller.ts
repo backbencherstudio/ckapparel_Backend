@@ -37,7 +37,7 @@ import { Role } from 'src/common/guard/role/role.enum';
 @ApiBearerAuth('admin_token')
 @ApiTags('Admin Support Plan Management')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
+@Roles(Role.ADMIN || Role.SUPER_ADMIN)
 @Controller('admin/support-plan')
 export class SupportPlanController {
   constructor(private readonly supportPlanService: SupportPlanService) {}

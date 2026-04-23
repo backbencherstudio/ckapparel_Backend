@@ -62,6 +62,7 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
   @IsOptional()
   @ApiProperty({
     description: 'Profile image',
+    format: 'binary',
     example: 'http://localhost:4000/api/users/avatar/1234567890',
   })
   avatar?: string;

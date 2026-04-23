@@ -3,7 +3,7 @@ import { UsersModule } from './users/users.module';
 import { ConversationsModule } from './conversations/conversations.module';
 import { MessagesModule } from './messages/messages.module';
 import { RealtimeModule } from './realtime/realtime.module';
-import { RtcModule } from './rtc/rtc.module';
+// import { RtcModule } from './rtc/rtc.module';
 
 @Module({
   imports: [
@@ -11,7 +11,7 @@ import { RtcModule } from './rtc/rtc.module';
     ConversationsModule,
     MessagesModule,
     RealtimeModule,
-    RtcModule,
+    // RtcModule,
   ],
 })
 export class ChatModule {}

@@ -907,6 +907,34 @@ export class AuthService {
       });
 
       if (user) {
+        // First, check Redis-stored OTP for email verification (if we issued via Redis)
+        const redisOtp = await this.redis.get(`email_otp:${email}`);
+
+        if (redisOtp && redisOtp === token) {
+          await this.prisma.user.update({
+            where: {
+              id: user.id,
+            },
+            data: {
+              email_verified_at: new Date(Date.now()),
+            },
+          });
+
+          // remove the redis key after successful verification
+          await this.redis.del(`email_otp:${email}`);
+
+          await this.createAuthNotification(
+            user.id,
+            'Your email has been verified successfully.',
+          );
+
+          return {
+            success: true,
+            message: 'Email verified successfully',
+          };
+        }
+
+        // Fall back to UcodeRepository tokens (legacy behavior)
         const existToken = await UcodeRepository.validateToken({
           email: email,
           token: token,
@@ -921,12 +949,6 @@ export class AuthService {
               email_verified_at: new Date(Date.now()),
             },
           });
-
-          // delete otp code
-          // await UcodeRepository.deleteToken({
-          //   email: email,
-          //   token: token,
-          // });
 
           await this.createAuthNotification(
             user.id,
@@ -959,20 +981,53 @@ export class AuthService {
 
   async resendVerificationEmail(email: string) {
     try {
+      // First, check if there's a pending registration for this email in Redis.
+      const registrationDataJson = await this.redis.get(
+        `registration_pending:${email}`,
+      );
+
+      // If registration is pending, generate and store OTP in Redis for registration flow
+      if (registrationDataJson) {
+        const registrationData = JSON.parse(registrationDataJson);
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+        await this.redis.setex(
+          `registration_otp:${email}`,
+          900, // 15 minutes
+          otp,
+        );
+
+        await this.mailService.sendOtpCodeToEmail({
+          email,
+          name: registrationData.name,
+          otp,
+        });
+
+        return {
+          success: true,
+          message: 'We have resent a verification code to your email',
+          otp, // For testing only - remove in production
+        };
+      }
+
+      // Not a pending registration — treat as existing user verification resend.
       const user = await UserRepository.getUserByEmail(email);
 
       if (user) {
-        // create otp code
-        const token = await UcodeRepository.createToken({
-          userId: user.id,
-          isOtp: true,
-        });
+        // Generate OTP and store in Redis (used for email verification)
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+        await this.redis.setex(
+          `email_otp:${email}`,
+          900, // 15 minutes
+          otp,
+        );
 
         // send otp code to email
         await this.mailService.sendOtpCodeToEmail({
           email: email,
           name: user.name,
-          otp: token,
+          otp,
         });
 
         await this.createAuthNotification(

@@ -190,16 +190,16 @@ export class AuthController {
       userLogin: {
         summary: 'User login',
         value: {
-          email: 'sazedul.user@example.com',
-          password: 'UserPassword123!',
+          email: 'sazedul.islam@example.com',
+          password: 'password123',
           login_as: 'user',
         },
       },
       adminLogin: {
         summary: 'Admin login',
         value: {
-          email: 'sazedul.admin@example.com',
-          password: 'AdminPassword123!',
+          email: 'sazed.admin@example.com',
+          password: '123456789',
           login_as: 'admin',
         },
       },

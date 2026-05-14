@@ -110,6 +110,7 @@ export class AuthService {
           flag: true,
           type: true,
           gender: true,
+          bio: true,
           age: true,
           date_of_birth: true,
           created_at: true,

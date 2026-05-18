@@ -314,7 +314,7 @@ export class ChallengesService {
     challenge: any;
     userParticipation: any;
     topFinisher: any;
-    conversation: ReturnType<typeof this.normalizeConversation>;
+    conversation: ReturnType<ChallengesService['normalizeConversation']>;
     hasConnection: boolean;
     lockState: {
       enabled: boolean;

@@ -5655,7 +5655,73 @@
       "get": {
         "description": "Returns a list of all sponsorships with status OPEN, including their needs and creator information.",
         "operationId": "SponsorshipController_getOpenSponsorships",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Page number (starts from 1)",
+            "schema": {
+              "default": 1,
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Number of items per page",
+            "schema": {
+              "default": 10,
+              "example": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "description": "Filter by sponsorship status",
+            "schema": {
+              "example": "OPEN",
+              "type": "string",
+              "enum": [
+                "OPEN",
+                "CLOSED",
+                "PENDING",
+                "DECLINED"
+              ]
+            }
+          },
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "description": "Filter by challenge category",
+            "schema": {
+              "example": "CYCLING",
+              "type": "string",
+              "enum": [
+                "RUNNING",
+                "CYCLING",
+                "SWIMMING",
+                "HIIT",
+                "OTHER"
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "description": "Search by sponsorship title or creator name",
+            "schema": {
+              "example": "iron woman",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "List of open sponsorships retrieved successfully."

@@ -168,34 +168,67 @@ export class SponsorshipService {
     }
   }
 
-  async getOpenSponsorships() {
+  async getOpenSponsorships(query?: AdminGetAllSponsorshipsQueryDto) {
     try {
-      const sponsorships = await this.prisma.sponsorship.findMany({
-        where: { status: SponsorshipStatus.OPEN },
-        include: {
-          sponsorship_Needs: true,
-          creator: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              avatar: true,
-              age: true,
-              country: true,
+      const page = query?.page ?? 1;
+      const limit = query?.limit ?? 10;
+      const skip = (page - 1) * limit;
+
+      const where: Prisma.SponsorshipWhereInput = {};
+
+      // Default to OPEN listings unless a specific status is provided
+      if (query?.status) {
+        where.status = query.status;
+      } else {
+        where.status = SponsorshipStatus.OPEN;
+      }
+
+      if (query?.category) {
+        where.challenge_category = query.category;
+      }
+
+      const search = query?.search?.trim();
+      if (search) {
+        where.OR = [
+          { title: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+          { creator: { name: { contains: search, mode: 'insensitive' } } },
+        ];
+      }
+
+      const [sponsorships, total] = await Promise.all([
+        this.prisma.sponsorship.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { created_at: 'desc' },
+          include: {
+            sponsorship_Needs: true,
+            creator: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                avatar: true,
+                age: true,
+                country: true,
+              },
+            },
+            _count: {
+              select: {
+                sponsorDetails: true,
+              },
             },
           },
-          _count: {
-            select: {
-              sponsorDetails: true,
-            },
-          },
-        },
-      });
+        }),
+        this.prisma.sponsorship.count({ where }),
+      ]);
 
       const sponsorshipsWithProgress = sponsorships.map((sponsorship) => {
         const amountRaised = Number(sponsorship.amount_raised ?? 0);
         const fundingGoal =
-          sponsorship.funding_goal !== null && sponsorship.funding_goal !== undefined
+          sponsorship.funding_goal !== null &&
+          sponsorship.funding_goal !== undefined
             ? Number(sponsorship.funding_goal)
             : null;
 
@@ -213,17 +246,31 @@ export class SponsorshipService {
             amountRaised,
             fundingGoal,
             remainingAmount:
-              fundingGoal !== null ? Math.max(fundingGoal - amountRaised, 0) : null,
+              fundingGoal !== null
+                ? Math.max(fundingGoal - amountRaised, 0)
+                : null,
             progressPercentage,
             isGoalAchieved,
           },
         };
       });
 
+      const totalPages = Math.ceil(total / limit);
+
       return {
         success: true,
         message: 'Open sponsorships fetched successfully',
         data: sponsorshipsWithProgress,
+        meta: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPreviousPage: page > 1,
+          category: query?.category ?? null,
+          search: search ?? null,
+        },
       };
     } catch (error) {
       throw new BadRequestException(
@@ -244,8 +291,22 @@ export class SponsorshipService {
       const where: Prisma.SponsorshipWhereInput = {
         creator_id: userId,
       };
+
       if (query?.status) {
         where.status = query.status;
+      }
+
+      if (query?.category) {
+        where.challenge_category = query.category;
+      }
+
+      const search = query?.search?.trim();
+      if (search) {
+        where.OR = [
+          { title: { contains: search, mode: 'insensitive' } },
+          { description: { contains: search, mode: 'insensitive' } },
+          { creator: { name: { contains: search, mode: 'insensitive' } } },
+        ];
       }
 
       const [sponsorships, total] = await Promise.all([
@@ -288,6 +349,8 @@ export class SponsorshipService {
           hasNextPage: page < totalPages,
           hasPreviousPage: page > 1,
           status: query?.status ?? null,
+          category: query?.category ?? null,
+          search: search ?? null,
         },
       };
     } catch (error) {
@@ -706,30 +769,35 @@ export class SponsorshipService {
       const now = new Date();
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-      const [openCount, pendingCount, completedCount, totalRaisedAggregate, weekly] =
-        await Promise.all([
-          this.prisma.sponsorship.count({
-            where: { status: SponsorshipStatus.OPEN },
-          }),
-          this.prisma.sponsorship.count({
-            where: { status: SponsorshipStatus.PENDING },
-          }),
-          this.prisma.sponsorship.count({
-            where: { status: SponsorshipStatus.CLOSED },
-          }),
-          this.prisma.sponsorship.aggregate({
-            _sum: { amount_raised: true },
-          }),
-          this.prisma.sponsorship.groupBy({
-            by: ['status'],
-            where: {
-              created_at: {
-                gte: sevenDaysAgo,
-              },
+      const [
+        openCount,
+        pendingCount,
+        completedCount,
+        totalRaisedAggregate,
+        weekly,
+      ] = await Promise.all([
+        this.prisma.sponsorship.count({
+          where: { status: SponsorshipStatus.OPEN },
+        }),
+        this.prisma.sponsorship.count({
+          where: { status: SponsorshipStatus.PENDING },
+        }),
+        this.prisma.sponsorship.count({
+          where: { status: SponsorshipStatus.CLOSED },
+        }),
+        this.prisma.sponsorship.aggregate({
+          _sum: { amount_raised: true },
+        }),
+        this.prisma.sponsorship.groupBy({
+          by: ['status'],
+          where: {
+            created_at: {
+              gte: sevenDaysAgo,
             },
-            _count: { status: true },
-          }),
-        ]);
+          },
+          _count: { status: true },
+        }),
+      ]);
 
       const weeklyMap = new Map<SponsorshipStatus, number>();
       for (const row of weekly) {
@@ -959,7 +1027,8 @@ export class SponsorshipService {
 
       const amountRaised = Number(sponsorship.amount_raised ?? 0);
       const fundingGoal =
-        sponsorship.funding_goal !== null && sponsorship.funding_goal !== undefined
+        sponsorship.funding_goal !== null &&
+        sponsorship.funding_goal !== undefined
           ? Number(sponsorship.funding_goal)
           : null;
 
@@ -977,7 +1046,9 @@ export class SponsorshipService {
             amountRaised,
             fundingGoal,
             remainingAmount:
-              fundingGoal !== null ? Math.max(fundingGoal - amountRaised, 0) : null,
+              fundingGoal !== null
+                ? Math.max(fundingGoal - amountRaised, 0)
+                : null,
             progressPercentage,
             isGoalAchieved:
               fundingGoal !== null ? amountRaised >= fundingGoal : false,

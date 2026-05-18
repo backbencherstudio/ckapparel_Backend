@@ -61,8 +61,8 @@ export class SponsorshipController {
   })
   @ApiUnauthorizedResponse({ description: 'Unauthorized request.' })
   @Get('open')
-  getOpenSponsorships() {
-    return this.sponsorshipService.getOpenSponsorships();
+  getOpenSponsorships(@Query() query: AdminGetAllSponsorshipsQueryDto) {
+    return this.sponsorshipService.getOpenSponsorships(query);
   }
 
   @ApiOperation({

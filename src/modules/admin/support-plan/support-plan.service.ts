@@ -232,10 +232,10 @@ export class SupportPlanService {
       // Handle file upload
       if (file) {
         try {
-          const storage = SazedStorage.disk('local');
           const fileName = `support-plans/${Date.now()}-${file.originalname}`;
-          await storage.put(fileName, file.buffer);
-          resourceUrl = storage.url(fileName);
+          // Use global SazedStorage.put so it respects configured driver (s3/minio or local)
+          await SazedStorage.put(fileName, file.buffer);
+          resourceUrl = SazedStorage.url(fileName);
         } catch (fileError) {
           throw new BadRequestException(
             `File upload failed: ${fileError.message}`,
@@ -345,10 +345,9 @@ export class SupportPlanService {
 
       if (file) {
         try {
-          const storage = SazedStorage.disk('local');
           const fileName = `support-plans/${Date.now()}-${file.originalname}`;
-          await storage.put(fileName, file.buffer);
-          resourceUrl = storage.url(fileName);
+          await SazedStorage.put(fileName, file.buffer);
+          resourceUrl = SazedStorage.url(fileName);
         } catch (fileError) {
           throw new BadRequestException(
             `File upload failed: ${fileError.message}`,

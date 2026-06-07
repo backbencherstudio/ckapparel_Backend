@@ -28,7 +28,13 @@ import { AppleLoginStrategy } from './strategies/apple.strategy';
     MailModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, JwtStrategy, GoogleStrategy, AppleLoginStrategy],
+  providers: [
+    AuthService,
+    LocalStrategy,
+    JwtStrategy,
+    GoogleStrategy, 
+    AppleLoginStrategy
+  ],
   exports: [AuthService],
 })
 export class AuthModule {}

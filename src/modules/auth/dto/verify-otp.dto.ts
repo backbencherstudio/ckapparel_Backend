@@ -14,7 +14,7 @@ export class VerifyOtpDto{
   @IsNotEmpty()
   @ApiProperty({
     description: 'The user email',
-    example: 'sazedul.islam@example.com',
+    example: 'fahim.devx@gmail.com',
   })
   email: string;
 }

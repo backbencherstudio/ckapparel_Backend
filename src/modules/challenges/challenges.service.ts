@@ -483,9 +483,9 @@ export class ChallengesService {
     const page = Number(query.page || 1);
     const limit = Number(query.limit || 20);
     const skip = (page - 1) * limit;
-    if (!query.path) {
-      throw new BadRequestException('path is required');
-    }
+    // if (!query.path) {
+    //   throw new BadRequestException('path is required');
+    // }
 
     const where: any = {
       deleted_at: null,

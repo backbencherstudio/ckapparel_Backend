@@ -83,7 +83,7 @@ export class AuthController {
       required: ['name', 'email', 'password'],
       properties: {
         name: { type: 'string', example: 'Sazedul Islam' },
-        email: { type: 'string', example: 'sazedul.islam@example.com' },
+        email: { type: 'string', example: 'fahim.devx@gmail.com' },
         password: { type: 'string', example: 'password123' },
         type: { type: 'string', example: 'user' },
       },
@@ -169,7 +169,7 @@ export class AuthController {
       properties: {
         email: {
           type: 'string',
-          example: 'sazedul.islam@example.com',
+          example: 'john@example.com',
           description: 'Email used for authentication.',
         },
         password: {
@@ -187,20 +187,60 @@ export class AuthController {
       },
     },
     examples: {
-      userLogin: {
-        summary: 'User login',
+      adminLogin: {
+        summary: 'Admin Login (System Admin)',
         value: {
-          email: 'sazedul.islam@example.com',
+          email: 'fahim.devx@gmail.com', // Your system admin email from app config
+          password: '12345678', // Your system admin password from app config
+          login_as: 'admin',
+        },
+      },
+      userLoginJohn: {
+        summary: 'John Doe (Regular User)',
+        value: {
+          email: 'john@example.com',
           password: 'password123',
           login_as: 'user',
         },
       },
-      adminLogin: {
-        summary: 'Admin login',
+      userLoginJane: {
+        summary: 'Jane Smith (Regular User)',
         value: {
-          email: 'sazed.admin@example.com',
-          password: '123456789',
-          login_as: 'admin',
+          email: 'jane@example.com',
+          password: 'password123',
+          login_as: 'user',
+        },
+      },
+      userLoginMike: {
+        summary: 'Mike Wilson (Regular User)',
+        value: {
+          email: 'mike@example.com',
+          password: 'password123',
+          login_as: 'user',
+        },
+      },
+      userLoginSarah: {
+        summary: 'Sarah Johnson (Regular User)',
+        value: {
+          email: 'sarah@example.com',
+          password: 'password123',
+          login_as: 'user',
+        },
+      },
+      userLoginAlex: {
+        summary: 'Alex Brown (Regular User)',
+        value: {
+          email: 'alex@example.com',
+          password: 'password123',
+          login_as: 'user',
+        },
+      },
+      userLoginEmma: {
+        summary: 'Emma Davis (Regular User)',
+        value: {
+          email: 'emma@example.com',
+          password: 'password123',
+          login_as: 'user',
         },
       },
     },
@@ -354,7 +394,10 @@ export class AuthController {
       type: 'object',
       required: ['email'],
       properties: {
-        email: { type: 'string', example: 'sazedul.islam@example.com' },
+        email: {
+          type: 'string',
+          example: 'fahim.devx@gmail.com',
+        },
       },
     },
   })
@@ -386,7 +429,7 @@ export class AuthController {
       type: 'object',
       required: ['email', 'otp'],
       properties: {
-        email: { type: 'string', example: 'sazedul.islam@example.com' },
+        email: { type: 'string', example: 'fahim.devx@gmail.com' },
         otp: { type: 'string', example: '123456' },
       },
     },
@@ -426,7 +469,7 @@ export class AuthController {
       type: 'object',
       required: ['email'],
       properties: {
-        email: { type: 'string', example: 'sazedul.islam@example.com' },
+        email: { type: 'string', example: 'fahim.devx@gmail.com' },
       },
     },
   })
@@ -458,7 +501,10 @@ export class AuthController {
       type: 'object',
       required: ['email', 'otp', 'new_password'],
       properties: {
-        email: { type: 'string', example: 'sazedul.islam@example.com' },
+        email: {
+          type: 'string',
+          example: 'fahim.devx@gmail.com',
+        },
         otp: { type: 'string', example: '123456' },
         new_password: { type: 'string', example: 'NewPassword123!' },
       },

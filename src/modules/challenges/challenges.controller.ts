@@ -74,7 +74,7 @@ export class ChallengesController {
   })
   @ApiQuery({
     name: 'path',
-    required: true,
+    required: false,
     enum: [
       'ELITE_ATHLETE',
       'MONTHLY_CHALLENGE',
@@ -127,52 +127,6 @@ export class ChallengesController {
     description: 'Challenge ID (CUID format)',
     example: 'cm8q1n1f50000kq3g7d9h2zab',
   })
-  @ApiOkResponse({
-    description: 'Challenge detail fetched successfully.',
-    schema: {
-      example: {
-        success: true,
-        message: 'Challenge detail fetched',
-        data: {
-          id: 'cm8q1n1f50000kq3g7d9h2zab',
-          title: '100K Ultra Challenge',
-          subtitle: 'Winter 2026 Edition',
-          description: 'Complete 100 kilometers within 30 days',
-          path: 'ELITE_ATHLETE',
-          category: 'RUNNING',
-          difficulty: 'ADVANCED',
-          require_device_connection: true,
-          allow_manual_submission: false,
-          enable_chat: true,
-          is_featured: true,
-          challenge_country: 'US',
-          status: 'ACTIVE',
-          metrics: [{ metric_type: 'DISTANCE_KM', target_value: 100, is_required: true }],
-          checkpoints: [
-            { sequence: 1, title: '25K Milestone', metric_targets: { DISTANCE_KM: 25 }, is_required: true },
-            { sequence: 2, title: '50K Milestone', metric_targets: { DISTANCE_KM: 50 }, is_required: true }
-          ],
-          participation: {
-            id: 'part123',
-            status: 'IN_PROGRESS',
-            joined_at: '2026-04-15T10:00:00Z',
-            started_at: '2026-04-15T10:05:00Z',
-            completed_at: null,
-            progress_percent: 45,
-            active_checkpoint_seq: 2
-          },
-          conversation: {
-            id: 'conv123',
-            title: 'Ultra Challenge 2026',
-            type: 'GROUP',
-            membersCount: 23
-          }
-        }
-      },
-    },
-  })
-  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
-  @ApiBadRequestResponse({ description: 'Challenge not found or has been deleted.' })
   @Get(':id')
   async getUserChallengeDetail(
     @GetUser('userId') userId: string,

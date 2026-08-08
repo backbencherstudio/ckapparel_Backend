@@ -10,6 +10,8 @@ import { PrismaModule } from '../../prisma/prisma.module';
 import { MailModule } from '../../mail/mail.module';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { AppleLoginStrategy } from './strategies/apple.strategy';
+import { GoogleMobileStrategy } from './strategies/google-mobile.strategy';
+import { AppleMobileStrategy } from './strategies/apple-mobile.strategy';
 
 @Module({
   imports: [
@@ -32,8 +34,10 @@ import { AppleLoginStrategy } from './strategies/apple.strategy';
     AuthService,
     LocalStrategy,
     JwtStrategy,
-    GoogleStrategy, 
-    AppleLoginStrategy
+    GoogleStrategy,
+    AppleLoginStrategy,
+    GoogleMobileStrategy,
+    AppleMobileStrategy,
   ],
   exports: [AuthService],
 })

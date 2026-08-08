@@ -5,7 +5,7 @@ export class LoginDto {
   @IsNotEmpty()
   @ApiProperty({
     description: 'The email of the user',
-    example: 'sazedul.islam@example.com',
+    example: 'fahim.devx@gmail.com',
   })
   email: string;
 

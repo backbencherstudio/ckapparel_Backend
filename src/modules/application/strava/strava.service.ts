@@ -53,7 +53,10 @@ export class StravaService {
     return cfg;
   }
 
-  private createState(userId: string, callbackMode: 'redirect' | 'json' = 'redirect') {
+  private createState(
+    userId: string,
+    callbackMode: 'redirect' | 'json' = 'redirect',
+  ) {
     return this.jwtService.sign(
       {
         userId,
@@ -258,7 +261,9 @@ export class StravaService {
     activity: any,
   ) {
     const providerActivityId = String(activity.id);
-    const activityDate = activity.start_date ? new Date(activity.start_date) : new Date();
+    const activityDate = activity.start_date
+      ? new Date(activity.start_date)
+      : new Date();
 
     const distanceMeters =
       activity.distance !== undefined && activity.distance !== null
@@ -318,7 +323,10 @@ export class StravaService {
     });
   }
 
-  private async getValidConnection(userId: string, externalConnectionId?: string) {
+  private async getValidConnection(
+    userId: string,
+    externalConnectionId?: string,
+  ) {
     const where: Prisma.ExternalConnectionWhereInput = {
       user_id: userId,
       provider: FitnessProvider.STRAVA,
@@ -346,11 +354,33 @@ export class StravaService {
   }
 
   async syncActivities(userId: string, dto: StravaSyncDto) {
-    const connection = await this.getValidConnection(userId, dto.externalConnectionId);
+    console.log('========== SYNC START ==========');
+
+    // Step 1: Connection fetch
+    console.log('Step 1: Fetching connection...');
+    const connection = await this.getValidConnection(
+      userId,
+      dto.externalConnectionId,
+    );
+
+    console.log('✅ Connection fetched:', {
+      id: connection.id,
+      user_id: connection.user_id,
+      is_active: connection.is_active,
+      token_prefix: connection.access_token?.slice(0, 12) + '...',
+      token_expires_at: connection.token_expires_at,
+      token_expired: connection.token_expires_at
+        ? connection.token_expires_at.getTime() < Date.now()
+        : 'unknown',
+      refresh_token_prefix: connection.refresh_token?.slice(0, 12) + '...',
+      scope: connection.scope,
+    });
 
     const perPage = dto.perPage ?? 50;
     const startPage = dto.page ?? 1;
     const maxPages = dto.maxPages ?? 1;
+
+    console.log('Step 2: Pagination config:', { perPage, startPage, maxPages });
 
     let synced = 0;
     let page = startPage;
@@ -365,48 +395,101 @@ export class StravaService {
       if (dto.after) params.after = dto.after;
       if (dto.before) params.before = dto.before;
 
-      const response = await this.stravaApi.get('/athlete/activities', {
-        headers: {
-          Authorization: `Bearer ${connection.access_token}`,
-        },
+      console.log(`Step 3.${i + 1}: Calling Strava API...`, {
+        url: `${appConfig().strava.api_v3}/athlete/activities`,
         params,
+        auth_header_prefix: connection.access_token?.slice(0, 12) + '...',
       });
 
-      const activities: any[] = response.data || [];
+      try {
+        const response = await this.stravaApi.get('/athlete/activities', {
+          headers: {
+            Authorization: `Bearer ${connection.access_token}`,
+          },
+          params,
+        });
 
-      if (!activities.length) {
-        break;
-      }
+        console.log(`✅ Step 3.${i + 1} SUCCESS:`, {
+          status: response.status,
+          count: response.data?.length,
+          firstActivity: response.data?.[0]?.name,
+        });
 
-      for (const activity of activities) {
-        const upserted = await this.upsertSyncedActivityRecord(connection, activity);
+        const activities: any[] = response.data || [];
 
-        syncedActivityIds.push(upserted.id);
-      }
+        if (!activities.length) {
+          console.log('⚠️ No activities returned, breaking loop');
+          break;
+        }
 
-      synced += activities.length;
-      page += 1;
+        for (const activity of activities) {
+          const upserted = await this.upsertSyncedActivityRecord(
+            connection,
+            activity,
+          );
+          syncedActivityIds.push(upserted.id);
+        }
 
-      if (activities.length < perPage) {
-        break;
+        synced += activities.length;
+        page += 1;
+
+        if (activities.length < perPage) {
+          console.log(
+            `⚠️ Got ${activities.length} < ${perPage} perPage, breaking`,
+          );
+          break;
+        }
+      } catch (error: any) {
+        console.error(`❌ Step 3.${i + 1} FAILED:`, {
+          error_name: error.name,
+          error_message: error.message,
+          error_code: error.code,
+          is_axios_error: error.isAxiosError,
+          has_response: !!error.response,
+          response_status: error.response?.status,
+          response_statusText: error.response?.statusText,
+          response_data: JSON.stringify(error.response?.data),
+          response_headers: error.response?.headers,
+          request_url: error.config?.url,
+          request_baseURL: error.config?.baseURL,
+          request_method: error.config?.method,
+          request_params: error.config?.params,
+          request_headers: {
+            ...error.config?.headers,
+            Authorization:
+              'Bearer ' +
+              (error.config?.headers?.Authorization?.replace(
+                'Bearer ',
+                '',
+              ).slice(0, 12) || '') +
+              '...',
+          },
+          stack: error.stack?.split('\n').slice(0, 5).join('\n'),
+        });
+
+        // Re-throw so we see it fail
+        throw error;
       }
     }
 
+    console.log('Step 4: Updating last_sync_at...');
     await this.prisma.externalConnection.update({
       where: { id: connection.id },
       data: { last_sync_at: new Date() },
     });
 
+    console.log('Step 5: Rebuilding challenge projection...');
     try {
       await this.stravaChallengeProjectionService.rebuildUserProgress(
         userId,
         connection.id,
       );
+      console.log('✅ Projection rebuilt');
     } catch (error) {
-      this.logger.warn(
-        `Strava projection rebuild failed after sync for user ${userId}: ${error?.message || 'unknown error'}`,
-      );
+      console.warn('⚠️ Projection rebuild failed:', error?.message);
     }
+
+    console.log('========== SYNC COMPLETE ==========');
 
     return {
       success: true,
@@ -511,9 +594,8 @@ export class StravaService {
         event?.owner_id
       ) {
         const providerUserId = String(event.owner_id);
-        const connection = await this.findActiveConnectionByProviderUserId(
-          providerUserId,
-        );
+        const connection =
+          await this.findActiveConnectionByProviderUserId(providerUserId);
 
         if (!connection) {
           return {
@@ -733,7 +815,11 @@ export class StravaService {
       success: 0,
       failed: 0,
       totalSynced: 0,
-      errors: [] as Array<{ connectionId: string; userId: string; message: string }>,
+      errors: [] as Array<{
+        connectionId: string;
+        userId: string;
+        message: string;
+      }>,
     };
 
     for (const connection of connections) {

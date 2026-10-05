@@ -75,7 +75,7 @@ export class StravaController {
   @UseGuards(JwtAuthGuard)
   @Get('auth/strava/url')
   async getConnectUrl(@GetUser('userId') userId: string) {
-    const authUrl = this.stravaService.getAuthUrl(userId, 'json');
+    const authUrl = this.stravaService.getAuthUrl(userId);
 
     return {
       success: true,
@@ -130,16 +130,22 @@ export class StravaController {
     @Query('error') error?: string,
     @Res() res?: Response,
   ) {
-    const clientUrl =
-      appConfig().app.client_app_url || process.env.APP_FRONTEND_URL;
+    const mobileAppUrl =
+      process.env.MOBILE_APP_URL;
 
+    // If Strava returns an error
     if (error) {
-      const redirectUrl = `${clientUrl || ''}/auth/strava/callback?status=error&error=${encodeURIComponent(error)}`;
+      const redirectUrl =
+        `${mobileAppUrl}?success=false` + `&error=${encodeURIComponent(error)}`;
+
       return res.redirect(redirectUrl);
     }
 
+    // Missing required params
     if (!code || !state) {
-      const redirectUrl = `${clientUrl || ''}/auth/strava/callback?status=error&error=missing_code_or_state`;
+      const redirectUrl =
+        `${mobileAppUrl}?success=false` + `&error=missing_code_or_state`;
+
       return res.redirect(redirectUrl);
     }
 
@@ -149,6 +155,7 @@ export class StravaController {
         state,
       );
 
+      // Swagger / JSON mode
       if (result.callbackMode === 'json') {
         return res.status(200).json({
           success: true,
@@ -158,10 +165,21 @@ export class StravaController {
         });
       }
 
-      const redirectUrl = `${clientUrl || ''}/auth/strava/callback?status=success&provider=strava&externalConnectionId=${result.connection.id}`;
+      // Mobile app
+      const redirectUrl =
+        `${mobileAppUrl}` +
+        `?success=true` +
+        `&externalConnectionId=${encodeURIComponent(result.connection.id)}`;
+
       return res.redirect(redirectUrl);
     } catch (e) {
-      const redirectUrl = `${clientUrl || ''}/auth/strava/callback?status=error&error=${encodeURIComponent(e?.message || 'strava_connection_failed')}`;
+      const redirectUrl =
+        `${mobileAppUrl}` +
+        `?success=false` +
+        `&error=${encodeURIComponent(
+          e?.message || 'strava_connection_failed',
+        )}`;
+
       return res.redirect(redirectUrl);
     }
   }
@@ -189,9 +207,9 @@ export class StravaController {
             is_active: true,
             token_expires_at: '2026-05-13T08:20:13.000Z',
             last_sync_at: '2026-04-15T14:30:00.000Z',
-            synced_activities_count: 247
-          }
-        }
+            synced_activities_count: 247,
+          },
+        },
       },
     },
   })
@@ -216,8 +234,8 @@ export class StravaController {
         message: 'Strava disconnected successfully',
         data: {
           isActive: false,
-          nextSyncAt: null
-        }
+          nextSyncAt: null,
+        },
       },
     },
   })
@@ -299,12 +317,14 @@ export class StravaController {
   @ApiQuery({
     name: 'hub.verify_token',
     required: true,
-    description: 'Token sent by Strava. Must match environment variable STRAVA_WEBHOOK_VERIFY_TOKEN.',
+    description:
+      'Token sent by Strava. Must match environment variable STRAVA_WEBHOOK_VERIFY_TOKEN.',
   })
   @ApiQuery({
     name: 'hub.challenge',
     required: true,
-    description: 'Challenge string from Strava that must be echoed back in response.',
+    description:
+      'Challenge string from Strava that must be echoed back in response.',
   })
   @ApiOkResponse({
     description: 'Webhook verification successful. Challenge echoed back.',
@@ -314,7 +334,10 @@ export class StravaController {
       },
     },
   })
-  @ApiForbiddenResponse({ description: 'Webhook verify token does not match STRAVA_WEBHOOK_VERIFY_TOKEN.' })
+  @ApiForbiddenResponse({
+    description:
+      'Webhook verify token does not match STRAVA_WEBHOOK_VERIFY_TOKEN.',
+  })
   @Get('strava/webhook')
   async verifyWebhook(
     @Query('hub.verify_token') verifyToken: string,
@@ -340,8 +363,8 @@ export class StravaController {
         subscription_id: 99999,
         updates: {
           title: 'Morning Run',
-          sport_type: 'Run'
-        }
+          sport_type: 'Run',
+        },
       },
     },
   })
@@ -373,14 +396,17 @@ export class StravaController {
         id: 99999,
         resource_state: 2,
         callback_url: 'https://api.example.com/api/strava/webhook',
-        created_at: '2026-04-15T12:00:00Z'
+        created_at: '2026-04-15T12:00:00Z',
       },
     },
   })
-  @ApiUnauthorizedResponse({ description: 'Missing or invalid admin access token.' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid admin access token.',
+  })
   @ApiForbiddenResponse({ description: 'Forbidden - Admin role required.' })
   @ApiBadRequestResponse({
-    description: 'Missing STRAVA_WEBHOOK_CALLBACK_URL or STRAVA_WEBHOOK_VERIFY_TOKEN environment variables.',
+    description:
+      'Missing STRAVA_WEBHOOK_CALLBACK_URL or STRAVA_WEBHOOK_VERIFY_TOKEN environment variables.',
   })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN || Role.SUPER_ADMIN)
@@ -403,12 +429,14 @@ export class StravaController {
           id: 99999,
           callback_url: 'https://api.example.com/api/strava/webhook',
           created_at: '2026-04-15T12:00:00Z',
-          resource_state: 2
-        }
+          resource_state: 2,
+        },
       ],
     },
   })
-  @ApiUnauthorizedResponse({ description: 'Missing or invalid admin access token.' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid admin access token.',
+  })
   @ApiForbiddenResponse({ description: 'Forbidden - Admin role required.' })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN || Role.SUPER_ADMIN)
@@ -427,7 +455,8 @@ export class StravaController {
     name: 'id',
     required: true,
     type: String,
-    description: 'Subscription ID from Strava (obtained from GET subscription endpoint)',
+    description:
+      'Subscription ID from Strava (obtained from GET subscription endpoint)',
   })
   @ApiOkResponse({
     description: 'Webhook subscription deleted successfully.',
@@ -438,9 +467,13 @@ export class StravaController {
       },
     },
   })
-  @ApiUnauthorizedResponse({ description: 'Missing or invalid admin access token.' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid admin access token.',
+  })
   @ApiForbiddenResponse({ description: 'Forbidden - Admin role required.' })
-  @ApiBadRequestResponse({ description: 'Invalid or non-existent subscription ID.' })
+  @ApiBadRequestResponse({
+    description: 'Invalid or non-existent subscription ID.',
+  })
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN || Role.SUPER_ADMIN)
   @Delete('strava/webhook/subscription')

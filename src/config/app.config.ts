@@ -103,6 +103,7 @@ export default () => ({
     scope:
       process.env.STRAVA_SCOPES ||
       'read,activity:read,activity:read_all,profile:read_all',
+    mobile_app_url: process.env.MOBILE_APP_URL,
   },
 
   payment: {

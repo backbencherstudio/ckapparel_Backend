@@ -17,16 +17,19 @@ export class StravaAutomationService implements OnApplicationBootstrap {
       return;
     }
 
-    try {
-      const result = await this.stravaService.ensureWebhookSubscription();
-      this.logger.log(
-        `Strava webhook bootstrap result: ${JSON.stringify(result)}`,
-      );
-    } catch (error) {
-      this.logger.warn(
-        `Strava webhook bootstrap failed: ${error?.message || 'unknown error'}`,
-      );
-    }
+    // Delay 3 seconds so NestJS finishes app.listen() and begins accepting incoming requests
+    setTimeout(async () => {
+      try {
+        const result = await this.stravaService.ensureWebhookSubscription();
+        this.logger.log(
+          `Strava webhook bootstrap result: ${JSON.stringify(result)}`,
+        );
+      } catch (error: any) {
+        this.logger.warn(
+          `Strava webhook bootstrap failed: ${error?.message || 'unknown error'}`,
+        );
+      }
+    }, 3000);
   }
 
   @Cron(process.env.STRAVA_AUTO_SYNC_CRON || '*/30 * * * *')

@@ -201,6 +201,60 @@ export class StravaService {
     };
   }
 
+  async getUserSyncedActivities(userId: string, page = 1, limit = 20) {
+    const validPage = Math.max(1, page);
+    const validLimit = Math.min(100, Math.max(1, limit));
+    const skip = (validPage - 1) * validLimit;
+
+    const [activities, total] = await Promise.all([
+      this.prisma.syncedActivity.findMany({
+        where: {
+          user_id: userId,
+          deleted_at: null,
+          provider: FitnessProvider.STRAVA,
+        },
+        orderBy: { activity_date: 'desc' },
+        skip,
+        take: validLimit,
+      }),
+      this.prisma.syncedActivity.count({
+        where: {
+          user_id: userId,
+          deleted_at: null,
+          provider: FitnessProvider.STRAVA,
+        },
+      }),
+    ]);
+
+    return {
+      success: true,
+      message: 'User synced Strava activities fetched successfully',
+      data: {
+        items: activities.map((a) => ({
+          id: a.id,
+          stravaActivityId: a.provider_activity_id,
+          name: a.name,
+          sportType: a.sport_type,
+          activityDate: a.activity_date,
+          distanceMeters: Number(a.distance_m || 0),
+          distanceKm: Number(a.distance_m || 0) / 1000,
+          elevationGainMeters: Number(a.elevation_gain_m || 0),
+          averageSpeedMps: Number(a.average_speed_mps || 0),
+          elapsedTimeSec: a.elapsed_time_sec,
+          movingTimeSec: a.moving_time_sec,
+          status: a.status,
+          createdAt: a.created_at,
+        })),
+        pagination: {
+          total,
+          page: validPage,
+          limit: validLimit,
+          totalPages: Math.ceil(total / validLimit),
+        },
+      },
+    };
+  }
+
   private async refreshAccessToken(connectionId: string) {
     const cfg = this.requiredConfig;
     const connection = await this.prisma.externalConnection.findUnique({
@@ -567,12 +621,19 @@ export class StravaService {
   }
 
   async processWebhookEvent(event: any) {
+    this.logger.log(
+      `🔔 Strava webhook event received: ${JSON.stringify(event)}`,
+    );
+
     try {
       // Deauthorization event: mark the connection inactive.
       if (
         event?.object_type === 'athlete' &&
         String(event?.updates?.authorized) === 'false'
       ) {
+        this.logger.log(
+          `Athlete ${event.object_id} deauthorized app. Marking connection inactive.`,
+        );
         await this.prisma.externalConnection.updateMany({
           where: {
             provider: FitnessProvider.STRAVA,
@@ -598,6 +659,9 @@ export class StravaService {
           await this.findActiveConnectionByProviderUserId(providerUserId);
 
         if (!connection) {
+          this.logger.warn(
+            `No active Strava connection for activity webhook owner: ${providerUserId}`,
+          );
           return {
             success: true,
             received: true,
@@ -619,6 +683,10 @@ export class StravaService {
               status: SyncedActivityStatus.IGNORED,
             },
           });
+
+          this.logger.log(
+            `🗑️ Activity ${event.object_id} deleted for user ${connection.user_id}`,
+          );
 
           try {
             await this.stravaChallengeProjectionService.rebuildUserProgress(
@@ -654,11 +722,18 @@ export class StravaService {
         );
 
         await this.upsertSyncedActivityRecord(validConnection, activity);
+        this.logger.log(
+          `✅ Synced Strava activity: "${activity.name}" (${activity.distance}m, sport: ${activity.sport_type || activity.type}) for user ${validConnection.user_id}`,
+        );
 
         try {
-          await this.stravaChallengeProjectionService.rebuildUserProgress(
-            validConnection.user_id,
-            validConnection.id,
+          const projectionResult =
+            await this.stravaChallengeProjectionService.rebuildUserProgress(
+              validConnection.user_id,
+              validConnection.id,
+            );
+          this.logger.log(
+            `📊 Challenge projection updated for user ${validConnection.user_id}: ${JSON.stringify(projectionResult?.data || {})}`,
           );
         } catch (error) {
           this.logger.warn(
@@ -708,21 +783,33 @@ export class StravaService {
       verify_token: cfg.webhook_verify_token,
     });
 
-    const { data } = await axios.post(
-      `${cfg.api_v3}/push_subscriptions`,
-      payload.toString(),
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+    try {
+      const { data } = await axios.post(
+        `${cfg.api_v3}/push_subscriptions`,
+        payload.toString(),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
         },
-      },
-    );
+      );
 
-    return {
-      success: true,
-      message: 'Strava webhook subscription created',
-      data,
-    };
+      return {
+        success: true,
+        message: 'Strava webhook subscription created',
+        data,
+      };
+    } catch (error: any) {
+      const errDetails = error.response?.data
+        ? JSON.stringify(error.response.data)
+        : error?.message || 'Unknown error';
+      this.logger.error(
+        `Failed to create Strava webhook subscription: ${errDetails}`,
+      );
+      throw new BadRequestException(
+        `Failed to create Strava webhook subscription: ${errDetails}`,
+      );
+    }
   }
 
   async ensureWebhookSubscription() {

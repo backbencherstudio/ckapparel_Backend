@@ -647,6 +647,12 @@ export class ChallengesService {
               },
               orderBy: { checkpoint: { sequence: 'asc' } },
             },
+            activityLinks: {
+              include: {
+                activity: true,
+              },
+              orderBy: { created_at: 'desc' },
+            },
           },
           take: 1,
         },
@@ -791,6 +797,20 @@ export class ChallengesService {
                   metricValues: cp.metric_values,
                 }),
               ),
+              activities:
+                participation.activityLinks?.map((link) => ({
+                  id: link.activity.id,
+                  name: link.activity.name,
+                  sportType: link.activity.sport_type,
+                  date: link.activity.activity_date,
+                  distanceMeters: Number(link.activity.distance_m || 0),
+                  elevationGainMeters: Number(
+                    link.activity.elevation_gain_m || 0,
+                  ),
+                  elapsedTimeSec: link.activity.elapsed_time_sec,
+                  movingTimeSec: link.activity.moving_time_sec,
+                  averageSpeedMps: Number(link.activity.average_speed_mps || 0),
+                })) || [],
             }
           : null,
         actions: {

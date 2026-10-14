@@ -993,7 +993,21 @@
       "get": {
         "description": "Returns the Strava OAuth authorization URL as JSON. Recommended for mobile apps and Swagger testing. Mobile client should open data.authUrl in system browser/in-app browser and wait for callback completion.",
         "operationId": "StravaController_getConnectUrl",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "mode",
+            "required": false,
+            "in": "query",
+            "description": "Optional callback response mode: \"json\" (returns JSON directly upon callback) or \"redirect\" (redirects to MOBILE_APP_URL). Defaults to \"redirect\".",
+            "schema": {
+              "enum": [
+                "redirect",
+                "json"
+              ],
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Strava authorization URL generated.",
@@ -1169,6 +1183,51 @@
           }
         ],
         "summary": "Disconnect Strava account",
+        "tags": [
+          "Strava Integration"
+        ]
+      }
+    },
+    "/api/strava/activities": {
+      "get": {
+        "description": "Returns a paginated list of activities synced from Strava for the authenticated user, sorted with the latest activity first.",
+        "operationId": "StravaController_getUserActivities",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "Page number (default: 1)",
+            "schema": {
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size (default: 20, max: 100)",
+            "schema": {
+              "example": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of synced Strava activities fetched successfully."
+          },
+          "401": {
+            "description": "Missing or invalid access token."
+          }
+        },
+        "security": [
+          {
+            "user_token": []
+          }
+        ],
+        "summary": "Get user synced Strava activities",
         "tags": [
           "Strava Integration"
         ]

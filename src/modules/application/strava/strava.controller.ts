@@ -59,6 +59,13 @@ export class StravaController {
       'Returns the Strava OAuth authorization URL as JSON. Recommended for mobile apps and Swagger testing. Mobile client should open data.authUrl in system browser/in-app browser and wait for callback completion.',
   })
   @ApiBearerAuth('user_token')
+  @ApiQuery({
+    name: 'mode',
+    required: false,
+    enum: ['redirect', 'json'],
+    description:
+      'Optional callback response mode: "json" (returns JSON directly upon callback) or "redirect" (redirects to MOBILE_APP_URL). Defaults to "redirect".',
+  })
   @ApiOkResponse({
     description: 'Strava authorization URL generated.',
     schema: {
@@ -74,8 +81,11 @@ export class StravaController {
   @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
   @UseGuards(JwtAuthGuard)
   @Get('auth/strava/url')
-  async getConnectUrl(@GetUser('userId') userId: string) {
-    const authUrl = this.stravaService.getAuthUrl(userId);
+  async getConnectUrl(
+    @GetUser('userId') userId: string,
+    @Query('mode') mode?: 'redirect' | 'json',
+  ) {
+    const authUrl = this.stravaService.getAuthUrl(userId, mode || 'redirect');
 
     return {
       success: true,
@@ -130,21 +140,45 @@ export class StravaController {
     @Query('error') error?: string,
     @Res() res?: Response,
   ) {
+    const rawMobileAppUrl =
+      process.env.MOBILE_APP_URL || appConfig().strava.mobile_app_url;
     const mobileAppUrl =
-      process.env.MOBILE_APP_URL;
+      rawMobileAppUrl &&
+      rawMobileAppUrl.trim() !== '' &&
+      rawMobileAppUrl.trim() !== 'undefined'
+        ? rawMobileAppUrl.trim()
+        : null;
 
     // If Strava returns an error
     if (error) {
+      if (!mobileAppUrl) {
+        return res.status(400).json({
+          success: false,
+          error,
+          message: `Strava authorization was denied or returned an error: ${error}`,
+        });
+      }
+
+      const separator = mobileAppUrl.includes('?') ? '&' : '?';
       const redirectUrl =
-        `${mobileAppUrl}?success=false` + `&error=${encodeURIComponent(error)}`;
+        `${mobileAppUrl}${separator}success=false&error=${encodeURIComponent(error)}`;
 
       return res.redirect(redirectUrl);
     }
 
     // Missing required params
     if (!code || !state) {
+      if (!mobileAppUrl) {
+        return res.status(400).json({
+          success: false,
+          error: 'missing_code_or_state',
+          message: 'Missing code or state in Strava callback.',
+        });
+      }
+
+      const separator = mobileAppUrl.includes('?') ? '&' : '?';
       const redirectUrl =
-        `${mobileAppUrl}?success=false` + `&error=missing_code_or_state`;
+        `${mobileAppUrl}${separator}success=false&error=missing_code_or_state`;
 
       return res.redirect(redirectUrl);
     }
@@ -155,8 +189,8 @@ export class StravaController {
         state,
       );
 
-      // Swagger / JSON mode
-      if (result.callbackMode === 'json') {
+      // Swagger / JSON mode or when no mobile app redirect URL is configured
+      if (result.callbackMode === 'json' || !mobileAppUrl) {
         return res.status(200).json({
           success: true,
           provider: 'strava',
@@ -165,18 +199,24 @@ export class StravaController {
         });
       }
 
-      // Mobile app
+      // Mobile app redirect
+      const separator = mobileAppUrl.includes('?') ? '&' : '?';
       const redirectUrl =
-        `${mobileAppUrl}` +
-        `?success=true` +
-        `&externalConnectionId=${encodeURIComponent(result.connection.id)}`;
+        `${mobileAppUrl}${separator}success=true&externalConnectionId=${encodeURIComponent(result.connection.id)}`;
 
       return res.redirect(redirectUrl);
     } catch (e) {
+      if (!mobileAppUrl) {
+        return res.status(400).json({
+          success: false,
+          error: e?.message || 'strava_connection_failed',
+          message: e?.message || 'Strava connection failed',
+        });
+      }
+
+      const separator = mobileAppUrl.includes('?') ? '&' : '?';
       const redirectUrl =
-        `${mobileAppUrl}` +
-        `?success=false` +
-        `&error=${encodeURIComponent(
+        `${mobileAppUrl}${separator}success=false&error=${encodeURIComponent(
           e?.message || 'strava_connection_failed',
         )}`;
 
@@ -218,6 +258,44 @@ export class StravaController {
   @Get('strava/connection')
   async getConnectionStatus(@GetUser('userId') userId: string) {
     return this.stravaService.getConnectionStatus(userId);
+  }
+
+  @ApiOperation({
+    summary: 'Get user synced Strava activities',
+    description:
+      'Returns a paginated list of activities synced from Strava for the authenticated user, sorted with the latest activity first.',
+  })
+  @ApiBearerAuth('user_token')
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    example: 1,
+    description: 'Page number (default: 1)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    example: 20,
+    description: 'Page size (default: 20, max: 100)',
+  })
+  @ApiOkResponse({
+    description: 'List of synced Strava activities fetched successfully.',
+  })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid access token.' })
+  @UseGuards(JwtAuthGuard)
+  @Get('strava/activities')
+  async getUserActivities(
+    @GetUser('userId') userId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.stravaService.getUserSyncedActivities(
+      userId,
+      Number(page || 1),
+      Number(limit || 20),
+    );
   }
 
   @ApiOperation({
@@ -409,7 +487,7 @@ export class StravaController {
       'Missing STRAVA_WEBHOOK_CALLBACK_URL or STRAVA_WEBHOOK_VERIFY_TOKEN environment variables.',
   })
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN || Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @Post('strava/webhook/subscription')
   async createSubscription() {
     return this.stravaService.createWebhookSubscription();
@@ -439,7 +517,7 @@ export class StravaController {
   })
   @ApiForbiddenResponse({ description: 'Forbidden - Admin role required.' })
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN || Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @Get('strava/webhook/subscription')
   async getSubscription() {
     return this.stravaService.getWebhookSubscription();
@@ -475,7 +553,7 @@ export class StravaController {
     description: 'Invalid or non-existent subscription ID.',
   })
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN || Role.SUPER_ADMIN)
+  @Roles(Role.ADMIN, Role.SUPER_ADMIN)
   @Delete('strava/webhook/subscription')
   async deleteSubscription(@Query('id') id: string) {
     return this.stravaService.deleteWebhookSubscription(id);

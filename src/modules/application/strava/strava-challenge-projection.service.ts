@@ -66,10 +66,6 @@ export class StravaChallengeProjectionService {
       where: {
         user_id: userId,
         deleted_at: null,
-        source_provider: FitnessProvider.STRAVA,
-        ...(externalConnectionId
-          ? { external_connection_id: externalConnectionId }
-          : {}),
         status: {
           notIn: [
             ParticipationStatus.ABANDONED,
@@ -102,7 +98,7 @@ export class StravaChallengeProjectionService {
     if (!participations.length) {
       return {
         success: true,
-        message: 'No Strava-backed participations found for projection',
+        message: 'No participations found for projection',
         data: {
           affectedChallenges: 0,
           updatedParticipations: 0,
@@ -110,21 +106,13 @@ export class StravaChallengeProjectionService {
       };
     }
 
-    const connectionIds = Array.from(
-      new Set(
-        participations
-          .map((participation) => participation.external_connection_id)
-          .filter((value): value is string => Boolean(value)),
-      ),
-    );
-
     const activities = await this.prisma.syncedActivity.findMany({
       where: {
         user_id: userId,
         deleted_at: null,
         provider: FitnessProvider.STRAVA,
-        ...(connectionIds.length
-          ? { external_connection_id: { in: connectionIds } }
+        ...(externalConnectionId
+          ? { external_connection_id: externalConnectionId }
           : {}),
       },
       orderBy: [{ activity_date: 'asc' }, { created_at: 'asc' }],
@@ -134,17 +122,17 @@ export class StravaChallengeProjectionService {
     let updatedParticipations = 0;
 
     for (const participation of participations) {
-      if (!participation.started_at) {
-        continue;
-      }
+      // Auto-start: if challenge wasn't explicitly started, use joined_at as the start threshold
+      const effectiveStartedAt =
+        participation.started_at || participation.joined_at;
 
       const pauseWindows = this.buildPauseWindows(
         participation.journeyLogs,
-        participation.started_at,
+        effectiveStartedAt,
       );
 
       const relevantActivities = activities.filter((activity) => {
-        if (activity.activity_date < participation.started_at!) return false;
+        if (activity.activity_date < effectiveStartedAt) return false;
         if (
           participation.completed_at &&
           activity.activity_date > participation.completed_at
@@ -173,6 +161,11 @@ export class StravaChallengeProjectionService {
         return true;
       });
 
+      // If the participation was not yet started and there are no relevant activities yet, skip
+      if (!participation.started_at && relevantActivities.length === 0) {
+        continue;
+      }
+
       const projection = this.calculateParticipationProjection(
         participation,
         relevantActivities,
@@ -182,6 +175,7 @@ export class StravaChallengeProjectionService {
         participation.id,
         projection,
         participation.status,
+        externalConnectionId,
       );
       touchedChallengeIds.add(participation.challenge_id);
       updatedParticipations += 1;
@@ -427,11 +421,18 @@ export class StravaChallengeProjectionService {
     participationId: string,
     projection: ParticipationProjectionResult,
     existingStatus: ParticipationStatus,
+    externalConnectionId?: string,
   ) {
     await this.prisma.$transaction(async (tx) => {
       const participation = await tx.challengeParticipation.findUnique({
         where: { id: participationId },
-        select: { id: true, challenge_id: true, user_id: true },
+        select: {
+          id: true,
+          challenge_id: true,
+          user_id: true,
+          started_at: true,
+          external_connection_id: true,
+        },
       });
 
       if (!participation) {
@@ -476,6 +477,11 @@ export class StravaChallengeProjectionService {
         });
       }
 
+      const wasNotStarted = !participation.started_at && !!projection.startedAt;
+      const wasNotCompleted =
+        existingStatus !== ParticipationStatus.COMPLETED &&
+        projection.isChallengeComplete;
+
       await tx.challengeParticipation.update({
         where: { id: participationId },
         data: {
@@ -494,8 +500,50 @@ export class StravaChallengeProjectionService {
           progress_percent: projection.progressPercent,
           metric_values: projection.totals,
           active_checkpoint_seq: projection.activeCheckpointSeq,
+          source_provider: FitnessProvider.STRAVA,
+          ...(participation.external_connection_id
+            ? {}
+            : externalConnectionId
+            ? { external_connection_id: externalConnectionId }
+            : {}),
         },
       });
+
+      if (wasNotStarted) {
+        await tx.challengeJourneyLog.create({
+          data: {
+            user_id: participation.user_id,
+            challenge_id: participation.challenge_id,
+            participation_id: participationId,
+            event_type: 'challenge_started',
+            message: 'Challenge auto-started by Strava activity',
+            source_provider: FitnessProvider.STRAVA,
+            metadata: {
+              started_at: projection.startedAt,
+              auto_started: true,
+            },
+          },
+        });
+      }
+
+      if (wasNotCompleted) {
+        await tx.challengeJourneyLog.create({
+          data: {
+            user_id: participation.user_id,
+            challenge_id: participation.challenge_id,
+            participation_id: participationId,
+            event_type: 'challenge_completed',
+            message: 'Challenge completed via Strava!',
+            source_provider: FitnessProvider.STRAVA,
+            metadata: {
+              completed_at: projection.completedAt,
+              totals: projection.totals,
+              progress_percent: projection.progressPercent,
+              auto_completed: true,
+            },
+          },
+        });
+      }
     });
   }
 

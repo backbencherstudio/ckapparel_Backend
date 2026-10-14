@@ -827,13 +827,32 @@ export class StravaService {
     const existing = await this.getWebhookSubscription();
     const list = Array.isArray(existing?.data) ? existing.data : [];
 
-    if (list.length > 0) {
+    const matching = list.find(
+      (sub: any) => sub.callback_url === cfg.webhook_callback_url,
+    );
+
+    if (matching) {
       return {
         success: true,
         created: false,
-        message: 'Strava webhook subscription already exists',
-        data: list,
+        message: 'Strava webhook subscription already exists and matches current callback URL',
+        data: matching,
       };
+    }
+
+    // Strava allows only 1 push subscription per application.
+    // If an existing subscription has a different callback_url, remove it before creating the new one.
+    for (const sub of list) {
+      this.logger.log(
+        `Removing outdated Strava webhook subscription ${sub.id} (URL: ${sub.callback_url})`,
+      );
+      try {
+        await this.deleteWebhookSubscription(String(sub.id));
+      } catch (err: any) {
+        this.logger.warn(
+          `Failed to delete outdated subscription ${sub.id}: ${err?.message}`,
+        );
+      }
     }
 
     const created = await this.createWebhookSubscription();

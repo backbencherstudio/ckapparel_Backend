@@ -796,7 +796,16 @@ export class StravaChallengeProjectionService {
       raw?.moving_time ??
       raw?.elapsed_time;
     const durationMin = Number(durationSec || 0) / 60;
-    const calories = Number(raw?.calories || raw?.kiloCalories || 0);
+    let calories = Number(raw?.calories || raw?.kiloCalories || 0);
+    if (calories <= 0) {
+      if (distanceKm > 0) {
+        // Standard running/walking calorie burn estimate (~65 kcal per km)
+        calories = Math.round(distanceKm * 65);
+      } else if (durationMin > 0) {
+        // Duration-based fallback for static/indoor workouts (~8 kcal per min)
+        calories = Math.round(durationMin * 8);
+      }
+    }
 
     return {
       DISTANCE_KM: distanceKm > 0 ? distanceKm : 0,

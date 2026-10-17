@@ -644,63 +644,86 @@ export class StravaChallengeProjectionService {
       >,
     );
 
-    const sorted = rows
-      .map((row) => ({
+    const preparedRows = rows.map((row) => {
+      const metricValues = (row.metric_values || {}) as Record<string, any>;
+      const stravaMovingTimeSec =
+        metricValues.DURATION_MIN !== undefined && metricValues.DURATION_MIN !== null
+          ? Math.round(Number(metricValues.DURATION_MIN) * 60)
+          : null;
+
+      const effectiveStartAt = row.started_at || row.joined_at;
+      const pausedDurationSec = row.completed_at
+        ? this.calculatePausedDurationSec(
+            pauseLogsByParticipation[row.id] || [],
+            effectiveStartAt,
+            row.completed_at,
+          )
+        : 0;
+
+      let finishTimeSec: number | null = null;
+      if (row.completed_at) {
+        if (stravaMovingTimeSec && stravaMovingTimeSec > 0) {
+          finishTimeSec = stravaMovingTimeSec;
+        } else {
+          finishTimeSec = Math.max(
+            0,
+            Math.floor(
+              (new Date(row.completed_at).getTime() -
+                new Date(effectiveStartAt).getTime()) /
+                1000 -
+                pausedDurationSec,
+            ),
+          );
+        }
+      }
+
+      return {
         ...row,
         progressPercent: Number(row.progress_percent || 0),
         finishedAt: row.completed_at,
-      }))
-      .sort((a, b) => {
-        const aDone = Boolean(a.finishedAt);
-        const bDone = Boolean(b.finishedAt);
-        if (aDone !== bDone) return aDone ? -1 : 1;
-        if (aDone && bDone) {
-          return (
-            new Date(a.finishedAt!).getTime() -
-            new Date(b.finishedAt!).getTime()
-          );
-        }
-        if (a.progressPercent !== b.progressPercent) {
-          return b.progressPercent - a.progressPercent;
-        }
+        finishTimeSec,
+      };
+    });
 
-        const aStartedAt = a.started_at || a.joined_at;
-        const bStartedAt = b.started_at || b.joined_at;
-        const aStart = new Date(aStartedAt).getTime();
-        const bStart = new Date(bStartedAt).getTime();
-        if (aStart !== bStart) {
-          return aStart - bStart;
+    const sorted = preparedRows.sort((a, b) => {
+      const aDone = Boolean(a.finishedAt);
+      const bDone = Boolean(b.finishedAt);
+      if (aDone !== bDone) return aDone ? -1 : 1;
+      if (aDone && bDone) {
+        if (
+          a.finishTimeSec !== null &&
+          b.finishTimeSec !== null &&
+          a.finishTimeSec !== b.finishTimeSec
+        ) {
+          return a.finishTimeSec - b.finishTimeSec;
         }
-
         return (
-          new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime()
+          new Date(a.finishedAt!).getTime() -
+          new Date(b.finishedAt!).getTime()
         );
-      });
+      }
+      if (a.progressPercent !== b.progressPercent) {
+        return b.progressPercent - a.progressPercent;
+      }
+
+      const aStartedAt = a.started_at || a.joined_at;
+      const bStartedAt = b.started_at || b.joined_at;
+      const aStart = new Date(aStartedAt).getTime();
+      const bStart = new Date(bStartedAt).getTime();
+      if (aStart !== bStart) {
+        return aStart - bStart;
+      }
+
+      return (
+        new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime()
+      );
+    });
 
     await this.prisma.$transaction(async (tx) => {
       const activeUserIds = sorted.map((row) => row.user_id);
 
       for (let index = 0; index < sorted.length; index += 1) {
         const row = sorted[index];
-        const effectiveStartAt = row.started_at || row.joined_at;
-        const pausedDurationSec = row.finishedAt
-          ? this.calculatePausedDurationSec(
-              pauseLogsByParticipation[row.id] || [],
-              effectiveStartAt,
-              row.finishedAt,
-            )
-          : 0;
-        const finishTimeSec = row.finishedAt
-          ? Math.max(
-              0,
-              Math.floor(
-                (new Date(row.finishedAt).getTime() -
-                  new Date(effectiveStartAt).getTime()) /
-                  1000 -
-                  pausedDurationSec,
-              ),
-            )
-          : null;
 
         await tx.challengeLeaderboard.upsert({
           where: {
@@ -716,7 +739,7 @@ export class StravaChallengeProjectionService {
             progress_percent: new Prisma.Decimal(row.progressPercent),
             metric_values: row.metric_values,
             finished_at: row.finishedAt,
-            finish_time_sec: finishTimeSec,
+            finish_time_sec: row.finishTimeSec,
             source_provider: FitnessProvider.STRAVA,
           },
           update: {
@@ -724,7 +747,7 @@ export class StravaChallengeProjectionService {
             progress_percent: new Prisma.Decimal(row.progressPercent),
             metric_values: row.metric_values,
             finished_at: row.finishedAt,
-            finish_time_sec: finishTimeSec,
+            finish_time_sec: row.finishTimeSec,
             source_provider: FitnessProvider.STRAVA,
           },
         });

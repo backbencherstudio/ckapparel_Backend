@@ -187,6 +187,7 @@ export class StravaChallengeProjectionService {
         projection,
         participation.status,
         externalConnectionId,
+        participation.journeyLogs,
       );
       touchedChallengeIds.add(participation.challenge_id);
       updatedParticipations += 1;
@@ -433,6 +434,7 @@ export class StravaChallengeProjectionService {
     projection: ParticipationProjectionResult,
     existingStatus: ParticipationStatus,
     externalConnectionId?: string,
+    journeyLogs?: Array<{ event_type: string | null; created_at: Date }>,
   ) {
     await this.prisma.$transaction(async (tx) => {
       const participation = await tx.challengeParticipation.findUnique({
@@ -488,13 +490,25 @@ export class StravaChallengeProjectionService {
         });
       }
 
+      let activePauseStart: Date | null = null;
+      for (const log of journeyLogs || []) {
+        if (log.event_type === 'challenge_paused') {
+          activePauseStart = log.created_at;
+        } else if (log.event_type === 'challenge_resumed') {
+          activePauseStart = null;
+        }
+      }
+
       const wasNotStarted = !participation.started_at && !!projection.startedAt;
       const wasNotCompleted =
         existingStatus !== ParticipationStatus.COMPLETED &&
         projection.isChallengeComplete;
       const wasPaused =
         existingStatus === ParticipationStatus.PAUSED &&
-        projection.activityContributions.length > 0;
+        activePauseStart !== null &&
+        projection.activityContributions.some(
+          (c) => c.activityDate >= activePauseStart!,
+        );
 
       await tx.challengeParticipation.update({
         where: { id: participationId },

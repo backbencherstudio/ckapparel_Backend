@@ -4,6 +4,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import axios, { AxiosInstance } from 'axios';
@@ -165,6 +166,17 @@ export class StravaService {
       },
     });
 
+    // Asynchronously trigger initial backfill of recent activities
+    this.syncActivities(connection.user_id, {
+      externalConnectionId: connection.id,
+      perPage: 30,
+      maxPages: 1,
+    }).catch((err) => {
+      this.logger.warn(
+        `Initial Strava activity backfill failed for user ${connection.user_id}: ${err?.message || 'unknown error'}`,
+      );
+    });
+
     return {
       connection,
       callbackMode: decoded.callbackMode || 'redirect',
@@ -272,28 +284,47 @@ export class StravaService {
       refresh_token: connection.refresh_token,
     });
 
-    const { data } = await axios.post<StravaTokenResponse>(
-      `${cfg.api_v3}/oauth/token`,
-      payload.toString(),
-      {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+    try {
+      const { data } = await axios.post<StravaTokenResponse>(
+        `${cfg.api_v3}/oauth/token`,
+        payload.toString(),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
         },
-      },
-    );
+      );
 
-    const updated = await this.prisma.externalConnection.update({
-      where: { id: connectionId },
-      data: {
-        access_token: data.access_token,
-        refresh_token: data.refresh_token,
-        token_expires_at: new Date(data.expires_at * 1000),
-        is_active: true,
-        deleted_at: null,
-      },
-    });
+      const updated = await this.prisma.externalConnection.update({
+        where: { id: connectionId },
+        data: {
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+          token_expires_at: new Date(data.expires_at * 1000),
+          is_active: true,
+          deleted_at: null,
+        },
+      });
 
-    return updated;
+      return updated;
+    } catch (error: any) {
+      if (
+        error.response?.status === 400 ||
+        error.response?.status === 401
+      ) {
+        this.logger.warn(
+          `Strava refresh token invalid/revoked for connection ${connectionId}. Deactivating connection.`,
+        );
+        await this.prisma.externalConnection.update({
+          where: { id: connectionId },
+          data: { is_active: false },
+        });
+        throw new UnauthorizedException(
+          'Strava authorization expired or was revoked. Please reconnect Strava.',
+        );
+      }
+      throw error;
+    }
   }
 
   private async findActiveConnectionByProviderUserId(providerUserId: string) {
@@ -707,19 +738,41 @@ export class StravaService {
           };
         }
 
-        const validConnection = await this.getValidConnection(
+        let validConnection = await this.getValidConnection(
           connection.user_id,
           connection.id,
         );
 
-        const { data: activity } = await this.stravaApi.get(
-          `/activities/${event.object_id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${validConnection.access_token}`,
+        let activity: any;
+        try {
+          const res = await this.stravaApi.get(
+            `/activities/${event.object_id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${validConnection.access_token}`,
+              },
             },
-          },
-        );
+          );
+          activity = res.data;
+        } catch (apiErr: any) {
+          if (apiErr.response?.status === 401) {
+            this.logger.warn(
+              `Strava activity fetch returned 401. Refreshing token and retrying for user ${connection.user_id}...`,
+            );
+            validConnection = await this.refreshAccessToken(connection.id);
+            const retryRes = await this.stravaApi.get(
+              `/activities/${event.object_id}`,
+              {
+                headers: {
+                  Authorization: `Bearer ${validConnection.access_token}`,
+                },
+              },
+            );
+            activity = retryRes.data;
+          } else {
+            throw apiErr;
+          }
+        }
 
         await this.upsertSyncedActivityRecord(validConnection, activity);
         this.logger.log(

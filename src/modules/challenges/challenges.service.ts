@@ -1214,6 +1214,8 @@ export class ChallengesService {
       challenge.id,
     );
 
+    await this.rebuildStravaProjectionSafe(userId, selectedConnectionId);
+
     return {
       success: true,
       message: activeChallenge
@@ -1548,10 +1550,6 @@ export class ChallengesService {
     const participation = challenge.participations?.[0] || null;
     if (!participation) {
       throw new ConflictException('You have not joined this challenge yet');
-    }
-
-    if (participation.status === ParticipationStatus.COMPLETED) {
-      throw new BadRequestException('Completed challenges cannot be left');
     }
 
     const conversation = challenge.conversation || null;

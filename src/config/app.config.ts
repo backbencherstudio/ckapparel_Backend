@@ -96,7 +96,7 @@ export default () => ({
     webhook_callback_url: process.env.STRAVA_WEBHOOK_CALLBACK_URL,
     auto_webhook_subscribe:
       (process.env.STRAVA_AUTO_WEBHOOK_SUBSCRIBE || 'false') === 'true',
-    auto_sync_enabled: (process.env.STRAVA_AUTO_SYNC_ENABLED || 'false') === 'true',
+    auto_sync_enabled: (process.env.STRAVA_AUTO_SYNC_ENABLED || 'true') === 'true',
     auto_sync_cron: process.env.STRAVA_AUTO_SYNC_CRON || '*/30 * * * *',
     auto_sync_per_page: parseInt(process.env.STRAVA_AUTO_SYNC_PER_PAGE || '50', 10),
     auto_sync_max_pages: parseInt(process.env.STRAVA_AUTO_SYNC_MAX_PAGES || '1', 10),

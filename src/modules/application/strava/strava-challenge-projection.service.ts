@@ -129,10 +129,21 @@ export class StravaChallengeProjectionService {
       const pauseWindows = this.buildPauseWindows(
         participation.journeyLogs,
         effectiveStartedAt,
+        activities,
       );
 
       const relevantActivities = activities.filter((activity) => {
-        if (activity.activity_date < effectiveStartedAt) return false;
+        const activityDurationSec =
+          activity.moving_time_sec ??
+          activity.elapsed_time_sec ??
+          (activity.raw_payload as any)?.moving_time ??
+          (activity.raw_payload as any)?.elapsed_time ??
+          0;
+        const activityEndDate = new Date(
+          activity.activity_date.getTime() + activityDurationSec * 1000,
+        );
+
+        if (activityEndDate < effectiveStartedAt) return false;
         if (
           participation.completed_at &&
           activity.activity_date > participation.completed_at
@@ -481,17 +492,22 @@ export class StravaChallengeProjectionService {
       const wasNotCompleted =
         existingStatus !== ParticipationStatus.COMPLETED &&
         projection.isChallengeComplete;
+      const wasPaused =
+        existingStatus === ParticipationStatus.PAUSED &&
+        projection.activityContributions.length > 0;
 
       await tx.challengeParticipation.update({
         where: { id: participationId },
         data: {
           status: projection.isChallengeComplete
             ? ParticipationStatus.COMPLETED
-            : existingStatus === ParticipationStatus.PAUSED
-              ? ParticipationStatus.PAUSED
-              : projection.startedAt
+            : wasPaused
               ? ParticipationStatus.IN_PROGRESS
-              : ParticipationStatus.JOINED,
+              : existingStatus === ParticipationStatus.PAUSED
+                ? ParticipationStatus.PAUSED
+                : projection.startedAt
+                ? ParticipationStatus.IN_PROGRESS
+                : ParticipationStatus.JOINED,
           started_at: projection.startedAt,
           completed_at: projection.completedAt,
           last_activity_at:
@@ -521,6 +537,23 @@ export class StravaChallengeProjectionService {
             metadata: {
               started_at: projection.startedAt,
               auto_started: true,
+            },
+          },
+        });
+      } else if (wasPaused) {
+        await tx.challengeJourneyLog.create({
+          data: {
+            user_id: participation.user_id,
+            challenge_id: participation.challenge_id,
+            participation_id: participationId,
+            event_type: 'challenge_resumed',
+            message: 'Challenge auto-resumed by Strava activity',
+            source_provider: FitnessProvider.STRAVA,
+            metadata: {
+              resumed_at:
+                projection.activityContributions.at(-1)?.activityDate ||
+                new Date(),
+              auto_resumed: true,
             },
           },
         });
@@ -783,6 +816,7 @@ export class StravaChallengeProjectionService {
   private buildPauseWindows(
     logs: Array<{ event_type: string | null; created_at: Date }>,
     startedAt: Date,
+    activities?: Array<{ activity_date: Date }>,
   ): PauseWindow[] {
     const windows: PauseWindow[] = [];
     let activePauseStart: Date | null = null;
@@ -811,10 +845,23 @@ export class StravaChallengeProjectionService {
     }
 
     if (activePauseStart) {
-      windows.push({
-        start: activePauseStart,
-        end: null,
-      });
+      // Auto-resume: if an activity occurred after activePauseStart, the earliest
+      // such activity ends the idle pause window so the activity itself is counted.
+      const resumingActivity = (activities || [])
+        .filter((a) => a.activity_date >= activePauseStart!)
+        .sort((a, b) => a.activity_date.getTime() - b.activity_date.getTime())[0];
+
+      if (resumingActivity) {
+        windows.push({
+          start: activePauseStart,
+          end: resumingActivity.activity_date,
+        });
+      } else {
+        windows.push({
+          start: activePauseStart,
+          end: null,
+        });
+      }
     }
 
     return windows;

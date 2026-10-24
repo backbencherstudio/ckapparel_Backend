@@ -1,4 +1,4 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsBoolean, IsIn, IsObject, IsOptional } from 'class-validator';
 import { CreateChallengeBaseDto } from './create-challenge-base.dto';
 

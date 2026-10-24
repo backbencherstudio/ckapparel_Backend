@@ -3,27 +3,29 @@ import { IsBoolean, IsIn, IsObject, IsOptional } from 'class-validator';
 import { CreateChallengeBaseDto } from './create-challenge-base.dto';
 
 export class MonthlyConfigDto {
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: 'main_event',
-    enum: ['main_event', 'benchmark'],
+    enum: ['main_event', 'benchmark', 'regular', 'normal'],
     description:
-      'main_event creates a featured monthly campaign, benchmark creates repeatable performance tracking.',
+      'main_event creates a featured monthly campaign, benchmark/regular creates everyday normal challenges.',
   })
-  @IsIn(['main_event', 'benchmark'])
-  challenge_kind: 'main_event' | 'benchmark';
+  @IsOptional()
+  @IsIn(['main_event', 'benchmark', 'regular', 'normal'])
+  challenge_kind?: 'main_event' | 'benchmark' | 'regular' | 'normal';
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: true,
     description:
-      'For main_event this is enforced as true by backend. For benchmark this is used as provided.',
+      'Whether the challenge resets monthly.',
   })
+  @IsOptional()
   @IsBoolean()
-  monthly_reset: boolean;
+  monthly_reset?: boolean;
 
-  @ApiProperty({
-    example: { month_name: 'November', benchmark_group: '5KM_TIME_TRIAL' },
+  @ApiPropertyOptional({
+    example: { month_name: 'November' },
     description:
-      'main_event requires metadata.month_name. benchmark requires metadata.benchmark_group.',
+      'Optional metadata. month_name defaults to the current month if not provided.',
   })
   @IsOptional()
   @IsObject()
@@ -31,8 +33,9 @@ export class MonthlyConfigDto {
 }
 
 export class CreateMonthlyChallengeDto extends CreateChallengeBaseDto {
-  @ApiProperty({ type: MonthlyConfigDto })
+  @ApiPropertyOptional({ type: MonthlyConfigDto })
+  @IsOptional()
   @IsObject()
-  monthly_config: MonthlyConfigDto;
-
+  monthly_config?: MonthlyConfigDto;
 }
+

@@ -131,15 +131,11 @@ export class ChallengesService {
     createChallengeDto: CreateMonthlyChallengeDto,
     userId?: string,
   ) {
-    if (
-      createChallengeDto.checkpoints &&
-      createChallengeDto.checkpoints.length > 0
-    ) {
-      throw new BadRequestException(
-        'Monthly challenges cannot have checkpoints.',
-      );
-    }
-    if (createChallengeDto.monthly_config.challenge_kind === 'main_event') {
+    const kind =
+      createChallengeDto.monthly_config?.challenge_kind?.toLowerCase() ||
+      'regular';
+
+    if (kind === 'main_event') {
       return this.createMonthlyMainEventChallenge(createChallengeDto, userId);
     }
     return this.createMonthlyBenchmarkChallenge(createChallengeDto, userId);
@@ -149,27 +145,44 @@ export class ChallengesService {
     createChallengeDto: CreateMonthlyChallengeDto,
     userId?: string,
   ) {
-    const monthName = this.extractRequiredMetadataString(
-      createChallengeDto.monthly_config.metadata,
-      'month_name',
-    );
+    const currentMonth = new Date().toLocaleString('en-US', { month: 'long' });
+    const monthName =
+      createChallengeDto.monthly_config?.metadata?.month_name?.trim() ||
+      currentMonth;
 
-    await this.ensureNoDuplicateMainEventForMonth(
-      createChallengeDto.category,
-      monthName,
-    );
+    // Check if an existing featured main event already exists for this category
+    const existingMainEvent = await this.prisma.challenges.findFirst({
+      where: {
+        deleted_at: null,
+        path: ChallengePath.MONTHLY_CHALLENGE,
+        category: createChallengeDto.category,
+        is_featured: true,
+      },
+      select: { id: true },
+    });
+
+    // If an existing main event exists and the new challenge is requested as featured,
+    // demote previous main event so there is always one major featured challenge.
+    // If not specified, the first one is featured and subsequent ones are regular.
+    const isMajor = createChallengeDto.is_featured ?? !existingMainEvent;
+    if (existingMainEvent && isMajor) {
+      await this.prisma.challenges.update({
+        where: { id: existingMainEvent.id },
+        data: { is_featured: false },
+      });
+    }
 
     return this.createByPath(
       ChallengePath.MONTHLY_CHALLENGE,
       {
         ...createChallengeDto,
-        is_featured: true,
+        is_featured: isMajor,
       },
       {
-        challenge_kind: 'main_event',
+        challenge_kind: isMajor ? 'main_event' : 'regular',
         monthly_reset: true,
         metadata: {
-          ...(createChallengeDto.monthly_config.metadata ?? {}),
+          ...(createChallengeDto.monthly_config?.metadata ?? {}),
           month_name: monthName,
         },
       },
@@ -181,22 +194,28 @@ export class ChallengesService {
     createChallengeDto: CreateMonthlyChallengeDto,
     userId?: string,
   ) {
-    const benchmarkGroup = this.extractRequiredMetadataString(
-      createChallengeDto.monthly_config.metadata,
-      'benchmark_group',
-    );
+    const currentMonth = new Date().toLocaleString('en-US', { month: 'long' });
+    const monthName =
+      createChallengeDto.monthly_config?.metadata?.month_name?.trim() ||
+      currentMonth;
+    const benchmarkGroup =
+      createChallengeDto.monthly_config?.metadata?.benchmark_group?.trim() ||
+      'REGULAR';
 
     return this.createByPath(
       ChallengePath.MONTHLY_CHALLENGE,
       {
         ...createChallengeDto,
-        is_featured: false,
+        is_featured: createChallengeDto.is_featured ?? false,
       },
       {
-        challenge_kind: 'benchmark',
-        monthly_reset: createChallengeDto.monthly_config.monthly_reset,
+        challenge_kind:
+          createChallengeDto.monthly_config?.challenge_kind || 'regular',
+        monthly_reset:
+          createChallengeDto.monthly_config?.monthly_reset ?? true,
         metadata: {
-          ...(createChallengeDto.monthly_config.metadata ?? {}),
+          ...(createChallengeDto.monthly_config?.metadata ?? {}),
+          month_name: monthName,
           benchmark_group: benchmarkGroup,
         },
       },

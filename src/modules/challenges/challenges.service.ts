@@ -353,7 +353,9 @@ export class ChallengesService {
         mainActionLabel:
           config?.challenge_kind === 'main_event'
             ? 'Join Main Event'
-            : 'View Benchmark',
+            : config?.challenge_kind === 'benchmark'
+            ? 'View Benchmark'
+            : 'Join Challenge',
       };
     } else if (challenge.path === ChallengePath.VIRTUAL_ADVENTURE) {
       const config = (challenge.pathConfig?.config_data ?? {}) as any;
@@ -793,6 +795,11 @@ export class ChallengesService {
                   checkpointId: cp.checkpoint_id,
                   sequence: cp.checkpoint.sequence,
                   title: cp.checkpoint.title,
+                  description: cp.checkpoint.description,
+                  metricTargets: cp.checkpoint.metric_targets,
+                  rewardTitle: cp.checkpoint.reward_title,
+                  rewardDescription: cp.checkpoint.reward_description,
+                  rewardImage: cp.checkpoint.reward_image,
                   status: cp.status,
                   metricValues: cp.metric_values,
                 }),

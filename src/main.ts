@@ -94,7 +94,7 @@ async function bootstrap() {
       AWS_S3_BUCKET: process.env.AWS_S3_BUCKET || null,
       MINIO_ENDPOINT: mask(process.env.MINIO_ENDPOINT),
     });
-  } catch (err) {}
+  } catch (err) { }
 
   if (envMinioEndpoint && envMinioBucket && envMinioAccess && envMinioSecret) {
     // use MinIO / S3 from env
@@ -154,7 +154,7 @@ async function bootstrap() {
         });
       }
     }
-  } catch (err) {}
+  } catch (err) { }
 
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     rawBody: true,
@@ -229,7 +229,7 @@ async function bootstrap() {
     )
     .build();
 
-    
+
   const document = SwaggerModule.createDocument(app, options);
 
   writeFileSync('./openapi.json', JSON.stringify(document, null, 2));

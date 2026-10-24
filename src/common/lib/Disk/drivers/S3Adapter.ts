@@ -89,7 +89,7 @@ export class S3Adapter implements IStorage {
     try {
       // Detect ContentType based on file extension
       const contentType = this.getContentType(key);
-      
+
       const params: AWS.S3.PutObjectRequest = {
         Bucket: this._config.connection.awsBucket,
         Key: key,
